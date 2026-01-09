@@ -1,4 +1,5 @@
-import 'package:bookmark/services/login_screen.dart';
+import 'package:bookmark/constants/routes.dart';
+import 'package:bookmark/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -14,6 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
       home: LoginScreen(),
+      routes: routes,
     );
   }
 }
