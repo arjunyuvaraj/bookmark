@@ -1,5 +1,6 @@
 import 'package:bookmark/constants/routes.dart';
 import 'package:bookmark/screens/login_screen.dart';
+import 'package:bookmark/theme/default_theme.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -12,10 +13,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      title: 'bookmark',
       home: LoginScreen(),
+      theme: theme,
+      debugShowCheckedModeBanner: false,
       routes: routes,
+      initialRoute: initialRoute,
     );
   }
 }
