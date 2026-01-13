@@ -12,7 +12,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
+  final nameController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
@@ -162,10 +164,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
 
                         const SizedBox(height: 32),
+                        // Email Label
+                        Text(
+                          'CONFIRM PASSWORD',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Colors.white.withAlpha(153),
+                                fontSize: 11,
+                                letterSpacing: 1.2,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
 
+                        // Email Input
+                        CustomTextField(
+                          hintText: '',
+                          controller: confirmPasswordController,
+                        ),
+
+                        const SizedBox(height: 24),
                         // Sign In Button
                         CustomPrimaryButton(
-                          label: "Sign In",
+                          label: "Register",
                           onTap: () {
                             // Handle sign in
                           },
