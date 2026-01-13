@@ -6,4 +6,5 @@ const String initialRoute = '/';
 const Widget initialScreen = LandingScreen();
 Map<String, WidgetBuilder> routes = {
   '/login': (context) => const LoginScreen(),
+  '/register': (context) => const RegisterScreen(),
 };
