@@ -1,5 +1,5 @@
 import 'package:bookmark/constants/routes.dart';
-import 'package:bookmark/screens/login_screen.dart';
+import 'package:bookmark/screens/landing_screen.dart';
 import 'package:bookmark/theme/default_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -14,11 +14,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'bookmark',
-      home: LoginScreen(),
+      home: const LandingScreen(),
       theme: theme,
       debugShowCheckedModeBanner: false,
       routes: routes,
-      initialRoute: initialRoute,
     );
   }
 }

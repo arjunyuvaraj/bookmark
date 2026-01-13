@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 
-// Core
-Color primary = const Color(0xFFFFFFFF);
-Color onPrimary = const Color(0xFF0F0F0F);
-Color tertiary = const Color(0xFF8D6BEB);
+const Color primaryBlue = Color(0xFF0670A1);
+const Color darkGray = Color(0xFF202124);
+const Color white = Color(0xFFFFFFFF);
 
-Color background = const Color(0xFF1A1A1A);
+Color primary = primaryBlue;
+Color onPrimary = white;
+Color tertiary = primaryBlue;
+
+Color background = darkGray;
 Color surface = const Color(0xFF2C2C2E);
-Color onSurface = const Color(0xFFEDEDED);
+Color onSurface = white;
 
-// Accents
 Color secondary = const Color(0xFFBDBDBD);
 Color outline = const Color(0xFF3A3A3A);
 
-// Buttons
-Color buttonBackground = const Color(0xFFFFFFFF);
-Color buttonText = const Color(0xFF111111);
+Color buttonBackground = primaryBlue;
+Color buttonText = white;
 
-// Input fields - darker background
 Color inputBackground = const Color(0xFF3C3C3E);
 Color inputBorder = const Color(0xFF4A4A4C);
 
