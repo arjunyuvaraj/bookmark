@@ -1,5 +1,4 @@
 import 'package:bookmark/components/custom_primary_button.dart';
-import 'package:bookmark/screens/authentication_gate.dart';
 import 'package:bookmark/services/authentication_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
