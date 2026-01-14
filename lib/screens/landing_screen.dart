@@ -37,9 +37,7 @@ class LandingScreen extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-          decoration: BoxDecoration(
-            color: darkGray.withValues(alpha: 0.3),
-          ),
+          decoration: BoxDecoration(color: darkGray.withValues(alpha: 0.3)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -63,10 +61,7 @@ class LandingScreen extends StatelessWidget {
                     onPressed: () {},
                     child: Text(
                       'About',
-                      style: GoogleFonts.inter(
-                        color: white,
-                        fontSize: 14,
-                      ),
+                      style: GoogleFonts.inter(color: white, fontSize: 14),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -77,7 +72,10 @@ class LandingScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
                       foregroundColor: white,
-                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 18,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -110,11 +108,7 @@ class LandingScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              primaryBlue,
-              Color(0xFF0A3D5C),
-              darkGray,
-            ],
+            colors: [primaryBlue, Color(0xFF0A3D5C), Color(0xFF202124)],
           ),
         ),
         child: Column(
@@ -133,10 +127,7 @@ class LandingScreen extends StatelessWidget {
               offset: const Offset(0, -2),
               child: RichText(
                 text: TextSpan(
-                  style: GoogleFonts.inter(
-                    color: white,
-                    fontSize: 24,
-                  ),
+                  style: GoogleFonts.inter(color: white, fontSize: 24),
                   children: const [
                     TextSpan(text: 'study '),
                     TextSpan(
@@ -160,7 +151,10 @@ class LandingScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: darkGray,
                 foregroundColor: white,
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 48,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -249,5 +243,3 @@ class LandingScreen extends StatelessWidget {
     );
   }
 }
-
-

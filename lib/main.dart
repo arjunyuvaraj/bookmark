@@ -14,10 +14,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'bookmark',
-      home: const LandingScreen(),
       theme: theme,
       debugShowCheckedModeBanner: false,
       routes: routes,
+      home: initialScreen,
+      initialRoute: initialRoute,
     );
   }
 }
