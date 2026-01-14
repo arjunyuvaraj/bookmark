@@ -1,6 +1,8 @@
 import 'package:bookmark/components/custom_primary_button.dart';
 import 'package:bookmark/components/custom_text_field.dart';
 import 'package:bookmark/components/google_sign_in_button.dart';
+import 'package:bookmark/services/authentication_service.dart';
+import 'package:bookmark/utilities/helper_functions.dart';
 import 'package:flutter/material.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -66,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Image.asset('app_icon.png', width: 48, height: 48),
+                            Image.asset('app-icon.png', width: 48, height: 48),
                             const SizedBox(width: 16),
                             Text(
                               'bookmark',
@@ -82,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         const SizedBox(height: 48),
 
-                        // Google Sign In Button
+                        // TODO: Google Sign In Button
                         GoogleSignInButton(
                           onTap: () {
                             // Handle Google sign in
@@ -180,6 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         CustomTextField(
                           hintText: '',
                           controller: confirmPasswordController,
+                          obscureText: true,
                         ),
 
                         const SizedBox(height: 24),
@@ -187,7 +190,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         CustomPrimaryButton(
                           label: "Register",
                           onTap: () {
-                            // Handle sign in
+                            if (passwordController.text ==
+                                confirmPasswordController.text) {
+                              AuthenticationService().signUpWithEmail(
+                                emailController.text,
+                                passwordController.text,
+                                context,
+                              );
+                            } else {
+                              displayErrorToUser(
+                                "Your passwords do not match",
+                                context,
+                              );
+                            }
                           },
                         ),
 
@@ -217,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Row(
                               children: [
                                 Text(
-                                  'Need an account? ',
+                                  'Already have an account? ',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: Colors.white.withAlpha(150),
@@ -227,7 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   onPressed: () {
                                     Navigator.pushReplacementNamed(
                                       context,
-                                      '/register',
+                                      '/login',
                                     );
                                   },
                                   style: TextButton.styleFrom(
@@ -237,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: Text(
-                                    'Sign Up',
+                                    'Login In',
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: Colors.white,

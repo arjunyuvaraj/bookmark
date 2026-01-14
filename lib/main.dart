@@ -1,9 +1,13 @@
 import 'package:bookmark/constants/routes.dart';
-import 'package:bookmark/screens/landing_screen.dart';
+import 'package:bookmark/firebase_options.dart';
 import 'package:bookmark/theme/default_theme.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 

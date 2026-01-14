@@ -1,3 +1,6 @@
+import 'package:bookmark/components/custom_primary_button.dart';
+import 'package:bookmark/screens/authentication_gate.dart';
+import 'package:bookmark/services/authentication_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
@@ -15,7 +18,8 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class _AppShellState extends State<AppShell>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -77,11 +81,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0A3D5C),
-                  colors.darkGray,
-                  colors.darkGray,
-                ],
+                colors: [Color(0xFF0A3D5C), colors.darkGray, colors.darkGray],
               ),
             ),
           ),
@@ -138,6 +138,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
               },
             ),
           ),
+          CustomPrimaryButton(
+            label: "Logout",
+            onTap: () => AuthenticationService().signOut(context),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -155,10 +159,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Expanded(
                   child: Text(
                     'User',
-                    style: GoogleFonts.inter(
-                      color: colors.white,
-                      fontSize: 14,
-                    ),
+                    style: GoogleFonts.inter(color: colors.white, fontSize: 14),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

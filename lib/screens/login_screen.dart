@@ -1,6 +1,7 @@
 import 'package:bookmark/components/custom_primary_button.dart';
 import 'package:bookmark/components/custom_text_field.dart';
 import 'package:bookmark/components/google_sign_in_button.dart';
+import 'package:bookmark/services/authentication_service.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -80,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         const SizedBox(height: 48),
 
-                        // Google Sign In Button
+                        // TODO: Google Sign In Button
                         GoogleSignInButton(
                           onTap: () {
                             // Handle Google sign in
@@ -167,7 +168,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         CustomPrimaryButton(
                           label: "Sign In",
                           onTap: () {
-                            // Handle sign in
+                            AuthenticationService().signInWithEmail(
+                              emailController.text,
+                              passwordController.text,
+                              context,
+                            );
                           },
                         ),
 

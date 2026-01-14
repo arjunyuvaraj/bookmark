@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "153734490852",
+    "project_id": "bookmark-bca",
+    "storage_bucket": "bookmark-bca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:153734490852:android:eeb6465023c108e8609af1",
+        "android_client_info": {
+          "package_name": "com.example.bookmark"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqZaF3NfMqKivGntrCEdb5eXOg3ViULkc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
