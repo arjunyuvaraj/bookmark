@@ -67,7 +67,7 @@ class LandingScreen extends StatelessWidget {
                   const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/login');
+                      Navigator.pushNamed(context, '/app');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
@@ -83,7 +83,7 @@ class LandingScreen extends StatelessWidget {
                     child: Text(
                       'Get Started',
                       style: GoogleFonts.inter(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -143,10 +143,10 @@ class LandingScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: -20),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/login');
+                Navigator.pushNamed(context, '/app');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: darkGray,
