@@ -40,6 +40,8 @@ dependencies:
   cloud_firestore: ^6.1.1
   google_sign_in: ^7.2.0
   grain: ^0.0.1
+  firebase_ai: ^3.6.1
+  firebase_analytics: ^12.1.0
 
 dev_dependencies:
   flutter_test:
