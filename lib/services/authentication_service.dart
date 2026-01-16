@@ -134,7 +134,6 @@ class AuthenticationService {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      // 🌐 WEB FLOW
       if (kIsWeb) {
         final provider = GoogleAuthProvider();
         final credential = await _auth.signInWithPopup(provider);
@@ -144,7 +143,6 @@ class AuthenticationService {
         return;
       }
 
-      // 📱 MOBILE FLOW
       await _initGoogle();
 
       final googleUser = await _googleSignIn.authenticate(scopeHint: ['email']);
