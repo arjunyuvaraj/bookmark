@@ -35,6 +35,7 @@ class MyApp extends StatelessWidget {
       theme: theme,
       debugShowCheckedModeBanner: false,
       routes: routes,
+      themeMode: ThemeMode.dark,
       home: initialScreen,
       initialRoute: initialRoute,
     );

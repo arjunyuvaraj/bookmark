@@ -184,4 +184,21 @@ class AuthenticationService {
     final data = await getUserData(currentUser!.uid);
     return data?['isBCA'] ?? false;
   }
+
+  Future<void> sendPasswordResetEmail(
+    String email,
+    BuildContext context,
+  ) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      displayErrorToUser(
+        "Sent the email to ${email}, if you can not see it, check spam/junk",
+        context,
+      );
+    } on FirebaseAuthException catch (e) {
+      displayErrorToUser(_handleAuthException(e), context);
+    } catch (e) {
+      displayErrorToUser('Failed to send password reset email.', context);
+    }
+  }
 }

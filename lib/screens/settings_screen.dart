@@ -75,20 +75,8 @@ class SettingsScreen extends StatelessWidget {
                             onTap: () => {
                               (user!.isAnonymous || email.isEmpty)
                                   ? null
-                                  : () async {
-                                      await FirebaseAuth.instance
-                                          .sendPasswordResetEmail(email: email);
-
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Password reset email sent.',
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                  : AuthenticationService()
+                                        .sendPasswordResetEmail(email, context),
                             },
                           ),
 
