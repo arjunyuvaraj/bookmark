@@ -1,22 +1,21 @@
-import 'package:bookmark/models/flashcard.dart';
+import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/models/quiz_question.dart';
 
 class StudySet {
   final List<Flashcard> flashcards;
   final List<QuizQuestion> quiz;
 
-  StudySet({
-    required this.flashcards,
-    required this.quiz,
-  });
+  StudySet({required this.flashcards, required this.quiz});
 
   factory StudySet.fromJson(Map<String, dynamic> json) {
     return StudySet(
-      flashcards: (json['flashcards'] as List<dynamic>?)
+      flashcards:
+          (json['flashcards'] as List<dynamic>?)
               ?.map((e) => Flashcard.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      quiz: (json['quiz'] as List<dynamic>?)
+      quiz:
+          (json['quiz'] as List<dynamic>?)
               ?.map((e) => QuizQuestion.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],

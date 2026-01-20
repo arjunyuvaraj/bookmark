@@ -16,7 +16,6 @@ class FlashcardSetService {
     Uint8List? webFile,
   }) async {
     try {
-      // Upload file if provided
       if (file != null || webFile != null) {
         final fileData = await _uploadFile(userId, set.title, file, webFile);
         set.fileUrl = fileData['url'];

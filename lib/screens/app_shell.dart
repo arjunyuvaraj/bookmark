@@ -1,4 +1,5 @@
 import 'package:bookmark/components/custom_primary_button.dart';
+import 'package:bookmark/screens/new_set_screen.dart';
 import 'package:bookmark/services/authentication_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,14 +26,16 @@ class _AppShellState extends State<AppShell>
 
   final List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_rounded, label: 'Home'),
+    _NavItem(icon: Icons.add_box_rounded, label: 'New Set'),
     _NavItem(icon: Icons.dashboard_rounded, label: 'Dashboard'),
     _NavItem(icon: Icons.library_books_rounded, label: 'Library'),
     _NavItem(icon: Icons.upload_rounded, label: 'Quick Upload'),
-    _NavItem(icon: Icons.settings_rounded, label: 'Settings'),
+    _NavItem(icon: Icons.person, label: 'Account'),
   ];
 
   final List<Widget> _screens = [
     const HomeScreen(),
+    const NewSetScreen(),
     const DashboardScreen(),
     const LibraryScreen(),
     const UploadScreen(),
@@ -124,10 +127,6 @@ class _AppShellState extends State<AppShell>
                 return _buildNavItem(index);
               },
             ),
-          ),
-          CustomPrimaryButton(
-            label: "Logout",
-            onTap: () => AuthenticationService().signOut(context),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
