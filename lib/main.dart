@@ -1,12 +1,8 @@
 import 'package:bookmark/constants/routes.dart';
 import 'package:bookmark/firebase_options.dart';
-import 'package:bookmark/services/prompts_service.dart';
 import 'package:bookmark/theme/default_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
-<<<<<<< HEAD
-=======
 import 'package:firebase_ai/firebase_ai.dart';
->>>>>>> be6ad49b347a573a209dc3a3c0e765d352824427
 import 'package:flutter/material.dart';
 
 void main() async {
@@ -14,14 +10,6 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-<<<<<<< HEAD
-  // Initialize Remote Config prompts
-  await PromptsService().initialize();
-
-  runApp(const MyApp());
-}
-
-=======
   runApp(const MyApp());
 }
 
@@ -37,7 +25,6 @@ Future<void> testGemini() async {
   debugPrint(response.text);
 }
 
->>>>>>> be6ad49b347a573a209dc3a3c0e765d352824427
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

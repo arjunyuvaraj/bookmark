@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:bookmark/models/set_model.dart';
+import 'package:bookmark/models/flashcard_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -131,7 +131,7 @@ class FlashcardSetService {
     }
   }
 
-  // Increment session count
+  // METHOD: Update session count
   Future<void> incrementSessions(String userId, String setId) async {
     try {
       await _firestore
@@ -145,7 +145,7 @@ class FlashcardSetService {
     }
   }
 
-  // Add a card to a set
+  // METHOD: Add new card
   Future<bool> addCard(String userId, String setId, Flashcard card) async {
     try {
       await _firestore
@@ -163,7 +163,7 @@ class FlashcardSetService {
     }
   }
 
-  // Stream sets for real-time updates
+  // METHOD: Build an active stream for users
   Stream<List<SetModel>> streamUserSets(String userId) {
     return _firestore
         .collection('users')
