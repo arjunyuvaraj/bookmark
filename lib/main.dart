@@ -1,5 +1,6 @@
 import 'package:bookmark/constants/routes.dart';
 import 'package:bookmark/firebase_options.dart';
+import 'package:bookmark/services/prompts_service.dart';
 import 'package:bookmark/theme/default_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize Remote Config prompts
+  await PromptsService().initialize();
 
   runApp(const MyApp());
 }
