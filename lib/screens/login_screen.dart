@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // TODO: Google Sign In Button
                         GoogleSignInButton(
                           onTap: () {
-                            // Handle Google sign in
+                            AuthenticationService().signInWithGoogle(context);
                           },
                         ),
 

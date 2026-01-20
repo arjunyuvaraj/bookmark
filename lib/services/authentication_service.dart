@@ -1,21 +1,27 @@
 import 'package:bookmark/utilities/helper_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthenticationService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  User? get currentUser => _auth.currentUser;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _googleInitialized = false;
 
+  User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<void> _createUserDocument(User user, {String? email}) async {
     final userEmail = email ?? user.email ?? '';
+
     final userDoc = _firestore.collection('users').doc(user.uid);
-    final docSnapshot = await userDoc.get();
-    if (!docSnapshot.exists) {
+    final snapshot = await userDoc.get();
+
+    if (!snapshot.exists) {
       await userDoc.set({
         'uid': user.uid,
         'email': userEmail,
@@ -27,159 +33,6 @@ class AuthenticationService {
       });
     } else {
       await userDoc.update({'lastLoginAt': FieldValue.serverTimestamp()});
-    }
-  }
-
-  Future<User?> signUpWithEmail(
-    String email,
-    String password,
-    BuildContext context,
-  ) async {
-    try {
-      final trimmedEmail = email.trim();
-      final trimmedPassword = password.trim();
-
-      final UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: trimmedEmail,
-            password: trimmedPassword,
-          );
-      if (userCredential.user != null) {
-        await _createUserDocument(userCredential.user!, email: trimmedEmail);
-      }
-      signInWithEmail(email, password, context);
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      String err = _handleAuthException(e);
-      displayErrorToUser(err, context);
-    } catch (e) {
-      throw Exception('An unexpected error occurred. Please try again.');
-    }
-  }
-
-  Future<User?> signInWithEmail(
-    String email,
-    String password,
-    BuildContext context,
-  ) async {
-    try {
-      final trimmedEmail = email.trim();
-      final trimmedPassword = password.trim();
-
-      final UserCredential userCredential = await _auth
-          .signInWithEmailAndPassword(
-            email: trimmedEmail,
-            password: trimmedPassword,
-          );
-      if (userCredential.user != null) {
-        await _createUserDocument(userCredential.user!, email: trimmedEmail);
-      }
-      Navigator.pushNamed(context, "/app");
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      String err = _handleAuthException(e);
-      displayErrorToUser(err, context);
-    } catch (e) {
-      throw Exception('An unexpected error occurred. Please try again.');
-    }
-  }
-
-  Future<User?> signInAnonymously() async {
-    try {
-      final UserCredential userCredential = await _auth.signInAnonymously();
-
-      if (userCredential.user != null) {
-        await _createUserDocument(userCredential.user!);
-      }
-
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred. Please try again.');
-    }
-  }
-
-  Future<void> signOut(BuildContext context) async {
-    try {
-      await _auth.signOut();
-      Navigator.pushNamed(context, '/');
-    } catch (e) {
-      throw Exception('Failed to sign out. Please try again.');
-    }
-  }
-
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email.trim());
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    } catch (e) {
-      throw Exception('Failed to send reset email. Please try again.');
-    }
-  }
-
-  Future<Map<String, dynamic>?> getUserData(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      return doc.data();
-    } catch (e) {
-      throw Exception('Failed to fetch user data.');
-    }
-  }
-
-  Future<bool> isCurrentUserBCA() async {
-    if (currentUser == null) return false;
-
-    try {
-      final userData = await getUserData(currentUser!.uid);
-      return userData?['isBCA'] ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<User?> linkAnonymousToEmailPassword(
-    String email,
-    String password,
-  ) async {
-    if (currentUser == null || !currentUser!.isAnonymous) {
-      throw Exception('No anonymous user to link.');
-    }
-
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: email.trim(),
-        password: password.trim(),
-      );
-
-      final userCredential = await currentUser!.linkWithCredential(credential);
-
-      if (userCredential.user != null) {
-        final trimmedEmail = email.trim();
-        await _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .update({'email': trimmedEmail});
-      }
-
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    } catch (e) {
-      throw Exception('Failed to link account. Please try again.');
-    }
-  }
-
-  Future<void> deleteAccount() async {
-    if (currentUser == null) return;
-
-    try {
-      final uid = currentUser!.uid;
-      await currentUser!.delete();
-      await _firestore.collection('users').doc(uid).delete();
-    } catch (e) {
-      throw Exception('Failed to delete account. Please try again.');
     }
   }
 
@@ -199,12 +52,153 @@ class AuthenticationService {
         return 'Incorrect password.';
       case 'too-many-requests':
         return 'Too many failed attempts. Please try again later.';
-      case 'operation-not-allowed':
-        return 'This sign-in method is not enabled.';
       case 'invalid-credential':
-        return 'Invalid credentials. Please check your email and password.';
+        return 'Invalid credentials.';
       default:
-        return 'Authentication failed. Please try again.';
+        return 'Authentication failed.';
+    }
+  }
+
+  Future<User?> signUpWithEmail(
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      await _createUserDocument(credential.user!, email: email.trim());
+      return credential.user;
+    } on FirebaseAuthException catch (e) {
+      displayErrorToUser(_handleAuthException(e), context);
+      return null;
+    }
+  }
+
+  Future<User?> signInWithEmail(
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      await _createUserDocument(credential.user!, email: email.trim());
+      Navigator.pushNamed(context, "/app");
+      return credential.user;
+    } on FirebaseAuthException catch (e) {
+      displayErrorToUser(_handleAuthException(e), context);
+      return null;
+    }
+  }
+
+  Future<User?> signInAnonymously() async {
+    final credential = await _auth.signInAnonymously();
+    await _createUserDocument(credential.user!);
+    return credential.user;
+  }
+
+  Future<User?> linkAnonymousToEmailPassword(
+    String email,
+    String password,
+  ) async {
+    if (currentUser == null || !currentUser!.isAnonymous) {
+      throw Exception('No anonymous user.');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email.trim(),
+      password: password.trim(),
+    );
+
+    final result = await currentUser!.linkWithCredential(credential);
+    await _firestore.collection('users').doc(result.user!.uid).update({
+      'email': email.trim(),
+    });
+
+    return result.user;
+  }
+
+  Future<void> _initGoogle() async {
+    if (!_googleInitialized) {
+      await _googleSignIn.initialize();
+      _googleInitialized = true;
+    }
+  }
+
+  Future<void> signInWithGoogle(BuildContext context) async {
+    try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        final credential = await _auth.signInWithPopup(provider);
+
+        await _createUserDocument(credential.user!);
+        Navigator.pushNamed(context, "/app");
+        return;
+      }
+
+      await _initGoogle();
+
+      final googleUser = await _googleSignIn.authenticate(scopeHint: ['email']);
+
+      final auth = await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(idToken: auth.idToken);
+
+      final userCredential = await _auth.signInWithCredential(credential);
+
+      await _createUserDocument(userCredential.user!);
+      Navigator.pushNamed(context, "/app");
+    } catch (e) {
+      displayErrorToUser("Google Sign-In failed: $e", context);
+    }
+  }
+
+  Future<void> signOut(BuildContext context) async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+    Navigator.pushNamed(context, '/');
+  }
+
+  Future<void> deleteAccount() async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+
+    await currentUser!.delete();
+    await _firestore.collection('users').doc(uid).delete();
+  }
+
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    return doc.data();
+  }
+
+  Future<bool> isCurrentUserBCA() async {
+    if (currentUser == null) return false;
+    final data = await getUserData(currentUser!.uid);
+    return data?['isBCA'] ?? false;
+  }
+
+  Future<void> sendPasswordResetEmail(
+    String email,
+    BuildContext context,
+  ) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      displayErrorToUser(
+        "Sent the email to ${email}, if you can not see it, check spam/junk",
+        context,
+      );
+    } on FirebaseAuthException catch (e) {
+      displayErrorToUser(_handleAuthException(e), context);
+    } catch (e) {
+      displayErrorToUser('Failed to send password reset email.', context);
     }
   }
 }
