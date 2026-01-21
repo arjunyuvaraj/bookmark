@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/models/quiz_question.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
 
+// Notion-style radius
+const double _cardRadius = 8.0;
+
 class QuizView extends StatefulWidget {
   final List<QuizQuestion> questions;
 
@@ -86,29 +89,30 @@ class _QuizViewState extends State<QuizView> {
               ),
               Text(
                 'Score: $_correctCount',
-                style: TextStyle(color: colors.primaryBlue, fontSize: 14),
+                style: TextStyle(color: colors.accentBlue, fontSize: 14),
               ),
             ],
           ),
         ),
         LinearProgressIndicator(
           value: (_currentIndex + 1) / widget.questions.length,
-          backgroundColor: colors.inputBackground,
-          color: colors.primaryBlue,
+          backgroundColor: colors.surface,
+          color: colors.accentBlue,
         ),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: colors.inputBackground,
-            borderRadius: BorderRadius.circular(12),
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(_cardRadius),
+            border: Border.all(color: colors.outline),
           ),
           child: Text(
             question.question,
-            style: GoogleFonts.instrumentSerif(
+            style: GoogleFonts.inter(
               color: colors.white,
-              fontSize: 18,
-              height: 1.4,
+              fontSize: 16,
+              height: 1.5,
             ),
           ),
         ),
@@ -116,47 +120,47 @@ class _QuizViewState extends State<QuizView> {
         Expanded(
           child: ListView.separated(
             itemCount: question.options.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final isSelected = _selectedAnswer == index;
               final isCorrect = index == question.correctIndex;
               final showResult = _hasAnswered;
 
-              Color backgroundColor = colors.inputBackground;
-              Color borderColor = colors.inputBorder;
+              Color backgroundColor = colors.surface;
+              Color borderColor = colors.outline;
 
               if (showResult) {
                 if (isCorrect) {
-                  backgroundColor = Colors.green.withValues(alpha: 0.2);
+                  backgroundColor = Colors.green.withValues(alpha: 0.1);
                   borderColor = Colors.green;
                 } else if (isSelected && !isCorrect) {
-                  backgroundColor = Colors.red.withValues(alpha: 0.2);
+                  backgroundColor = Colors.red.withValues(alpha: 0.1);
                   borderColor = Colors.red;
                 }
               } else if (isSelected) {
-                backgroundColor = colors.primaryBlue.withValues(alpha: 0.2);
-                borderColor = colors.primaryBlue;
+                backgroundColor = colors.accentBlue.withValues(alpha: 0.1);
+                borderColor = colors.accentBlue;
               }
 
               return GestureDetector(
                 onTap: () => _selectAnswer(index),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: backgroundColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(_cardRadius),
                     border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 28,
-                        height: 28,
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(_cardRadius),
                           color: isSelected
                               ? borderColor
-                              : colors.inputBackground,
+                              : colors.surface,
                           border: Border.all(color: borderColor),
                         ),
                         child: Center(
@@ -165,6 +169,7 @@ class _QuizViewState extends State<QuizView> {
                             style: TextStyle(
                               color: isSelected ? colors.white : borderColor,
                               fontWeight: FontWeight.w600,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -175,14 +180,14 @@ class _QuizViewState extends State<QuizView> {
                           question.options[index],
                           style: TextStyle(
                             color: colors.white,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
                       ),
                       if (showResult && isCorrect)
-                        const Icon(Icons.check_circle, color: Colors.green),
+                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
                       if (showResult && isSelected && !isCorrect)
-                        const Icon(Icons.cancel, color: Colors.red),
+                        const Icon(Icons.cancel, color: Colors.red, size: 20),
                     ],
                   ),
                 ),
@@ -196,18 +201,18 @@ class _QuizViewState extends State<QuizView> {
             child: ElevatedButton(
               onPressed: _nextQuestion,
               style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primaryBlue,
+                backgroundColor: colors.accentBlue,
                 foregroundColor: colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(_cardRadius),
                 ),
               ),
               child: Text(
                 _currentIndex < widget.questions.length - 1
                     ? 'Next Question'
                     : 'See Results',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -223,24 +228,24 @@ class _QuizViewState extends State<QuizView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 120,
-            height: 120,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(_cardRadius),
               color: percentage >= 70
-                  ? Colors.green.withValues(alpha: 0.2)
-                  : Colors.orange.withValues(alpha: 0.2),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.orange.withValues(alpha: 0.1),
               border: Border.all(
                 color: percentage >= 70 ? Colors.green : Colors.orange,
-                width: 3,
+                width: 1,
               ),
             ),
             child: Center(
               child: Text(
                 '$percentage%',
-                style: GoogleFonts.instrumentSerif(
+                style: GoogleFonts.inter(
                   color: colors.white,
-                  fontSize: 32,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -249,30 +254,31 @@ class _QuizViewState extends State<QuizView> {
           const SizedBox(height: 24),
           Text(
             'Quiz Complete!',
-            style: GoogleFonts.instrumentSerif(
+            style: GoogleFonts.inter(
               color: colors.white,
-              fontSize: 24,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'You got $_correctCount out of ${widget.questions.length} correct',
-            style: TextStyle(color: colors.secondary, fontSize: 16),
+            style: TextStyle(color: colors.secondary, fontSize: 14),
           ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _restartQuiz,
             style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primaryBlue,
+              backgroundColor: colors.accentBlue,
               foregroundColor: colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_cardRadius),
               ),
             ),
             child: const Text(
               'Try Again',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ),
         ],

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:bookmark/theme/color_scheme.dart' as colors;
+
+// Notion-style button radius
+const double _buttonRadius = 8.0;
 
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const GoogleSignInButton({required this.onTap});
+  const GoogleSignInButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -11,23 +15,23 @@ class GoogleSignInButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(_buttonRadius),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           decoration: BoxDecoration(
-            color: const Color(0xFF3C3C3E),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withAlpha(25), width: 1),
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(_buttonRadius),
+            border: Border.all(color: colors.outline, width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 12),
               Text(
                 'Continue with Google',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
+                  color: colors.white,
                   fontWeight: FontWeight.w500,
+                  fontSize: 15,
                 ),
               ),
             ],

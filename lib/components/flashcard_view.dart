@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/models/flashcard.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
 
+// Notion-style radius
+const double _cardRadius = 8.0;
+
 class FlashcardView extends StatefulWidget {
   final List<Flashcard> flashcards;
 
@@ -107,7 +110,11 @@ class _FlashcardViewState extends State<FlashcardView> {
                 color: _currentIndex > 0 ? colors.white : colors.secondary,
               ),
               style: IconButton.styleFrom(
-                backgroundColor: colors.inputBackground,
+                backgroundColor: colors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(_cardRadius),
+                  side: BorderSide(color: colors.outline),
+                ),
                 padding: const EdgeInsets.all(12),
               ),
             ),
@@ -122,7 +129,11 @@ class _FlashcardViewState extends State<FlashcardView> {
                     : colors.secondary,
               ),
               style: IconButton.styleFrom(
-                backgroundColor: colors.inputBackground,
+                backgroundColor: colors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(_cardRadius),
+                  side: BorderSide(color: colors.outline),
+                ),
                 padding: const EdgeInsets.all(12),
               ),
             ),
@@ -150,11 +161,11 @@ class _FlashcardTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isAnswer ? colors.primaryBlue.withValues(alpha: 0.15) : colors.inputBackground,
-        borderRadius: BorderRadius.circular(16),
+        color: isAnswer ? colors.accentBlue.withValues(alpha: 0.1) : colors.surface,
+        borderRadius: BorderRadius.circular(_cardRadius),
         border: Border.all(
-          color: isAnswer ? colors.primaryBlue : colors.inputBorder,
-          width: isAnswer ? 2 : 1,
+          color: isAnswer ? colors.accentBlue : colors.outline,
+          width: 1,
         ),
       ),
       child: Column(
@@ -163,7 +174,7 @@ class _FlashcardTile extends StatelessWidget {
           Text(
             isAnswer ? 'Answer' : 'Question',
             style: TextStyle(
-              color: isAnswer ? colors.primaryBlue : colors.secondary,
+              color: isAnswer ? colors.accentBlue : colors.secondary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,
@@ -172,10 +183,10 @@ class _FlashcardTile extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             text,
-            style: GoogleFonts.instrumentSerif(
+            style: GoogleFonts.inter(
               color: colors.white,
-              fontSize: 20,
-              height: 1.4,
+              fontSize: 18,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),

@@ -10,18 +10,33 @@ ThemeData theme = ThemeData(
   scaffoldBackgroundColor: background,
 
   textTheme: TextTheme(
-    displayLarge: displayLarge.copyWith(color: primary),
-    headlineMedium: headlineMedium,
+    displayLarge: displayLarge.copyWith(color: white),
+    displayMedium: displayMedium.copyWith(color: white),
+    displaySmall: displaySmall.copyWith(color: white),
+    headlineLarge: headlineLarge.copyWith(color: white),
+    headlineMedium: headlineMedium.copyWith(color: secondary),
+    headlineSmall: headlineSmall.copyWith(color: white),
+    titleLarge: titleLarge.copyWith(color: white),
+    titleMedium: titleMedium.copyWith(color: white),
+    titleSmall: titleSmall.copyWith(color: white),
+    bodyLarge: bodyLarge.copyWith(color: white),
     bodyMedium: bodyMedium.copyWith(color: onSurface),
+    bodySmall: bodySmall.copyWith(color: secondary),
+    labelLarge: labelLarge.copyWith(color: white),
+    labelMedium: labelMedium.copyWith(color: white),
+    labelSmall: labelSmall.copyWith(color: secondary),
   ),
 
   elevatedButtonTheme: ElevatedButtonThemeData(style: primaryButtonStyle),
 
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.transparent,
+  appBarTheme: AppBarTheme(
+    backgroundColor: background,
     elevation: 0,
     surfaceTintColor: Colors.transparent,
+    foregroundColor: white,
   ),
   inputDecorationTheme: inputTheme,
   dividerColor: outline,
+  cardColor: surface,
+  dialogTheme: DialogThemeData(backgroundColor: surface),
 );

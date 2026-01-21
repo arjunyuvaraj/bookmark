@@ -1,4 +1,4 @@
-import 'package:bookmark/components/custom_primary_button.dart';
+import 'package:bookmark/components/custom_secondary_button.dart';
 import 'package:bookmark/services/authentication_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +9,9 @@ import 'dashboard_screen.dart';
 import 'library_screen.dart';
 import 'upload_screen.dart';
 import 'settings_screen.dart';
+
+// Notion-style radius
+const double _sidebarRadius = 8.0;
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -72,28 +75,15 @@ class _AppShellState extends State<AppShell>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: colors.darkGray,
-      body: Stack(
+      backgroundColor: colors.black,
+      body: Row(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0A3D5C), colors.darkGray, colors.darkGray],
-              ),
+          _buildSidebar(),
+          Expanded(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: _screens[_selectedIndex],
             ),
-          ),
-          Row(
-            children: [
-              _buildSidebar(),
-              Expanded(
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: _screens[_selectedIndex],
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -103,46 +93,53 @@ class _AppShellState extends State<AppShell>
   Widget _buildSidebar() {
     return Container(
       width: 200,
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(_sidebarRadius),
         border: Border.all(
-          color: colors.outline.withValues(alpha: 0.3),
+          color: colors.outline,
           width: 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _navItems.length,
               itemBuilder: (context, index) {
                 return _buildNavItem(index);
               },
             ),
           ),
-          CustomPrimaryButton(
-            label: "Logout",
-            onTap: () => AuthenticationService().signOut(context),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: CustomSecondaryButton(
+              label: "Logout",
+              onTap: () => AuthenticationService().signOut(context),
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: colors.primaryBlue,
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: colors.outline,
+                    borderRadius: BorderRadius.circular(_sidebarRadius),
+                  ),
                   child: const Icon(
                     Icons.person,
                     color: colors.white,
-                    size: 20,
+                    size: 18,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'User',
@@ -163,39 +160,36 @@ class _AppShellState extends State<AppShell>
     final item = _navItems[index];
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _onItemTapped(index),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(_sidebarRadius),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? colors.primaryBlue.withValues(alpha: 0.3)
+                  ? colors.outline
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_sidebarRadius),
             ),
             child: Row(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    item.icon,
-                    color: isSelected ? colors.white : colors.secondary,
-                    size: 20,
-                  ),
+                Icon(
+                  item.icon,
+                  color: isSelected ? colors.white : colors.secondary,
+                  size: 18,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Text(
                   item.label,
                   style: GoogleFonts.inter(
                     color: isSelected ? colors.white : colors.secondary,
                     fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),
               ],

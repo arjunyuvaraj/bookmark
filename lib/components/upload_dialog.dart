@@ -5,6 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
 import 'package:bookmark/services/prompt_service.dart';
 
+// Notion-style radius
+const double _cardRadius = 8.0;
+
 class UploadDialog extends StatefulWidget {
   const UploadDialog({super.key});
 
@@ -127,7 +130,7 @@ class _UploadDialogState extends State<UploadDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: colors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_cardRadius)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
         child: _isLoading
@@ -146,19 +149,19 @@ class _UploadDialogState extends State<UploadDialog> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
-            width: 48,
-            height: 48,
+          SizedBox(
+            width: 32,
+            height: 32,
             child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(colors.secondary),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'Generating flashcards...',
             style: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: colors.white,
             ),
@@ -166,7 +169,7 @@ class _UploadDialogState extends State<UploadDialog> {
           const SizedBox(height: 6),
           Text(
             'This may take a moment',
-            style: GoogleFonts.inter(fontSize: 13, color: colors.secondary),
+            style: GoogleFonts.inter(fontSize: 12, color: colors.secondary),
           ),
         ],
       ),
@@ -185,8 +188,8 @@ class _UploadDialogState extends State<UploadDialog> {
               Expanded(
                 child: Text(
                   'Generated Output',
-                  style: GoogleFonts.instrumentSerif(
-                    fontSize: 20,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: colors.white,
                   ),
@@ -214,8 +217,8 @@ class _UploadDialogState extends State<UploadDialog> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: colors.inputBackground,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colors.inputBorder),
+                borderRadius: BorderRadius.circular(_cardRadius),
+                border: Border.all(color: colors.outline),
               ),
               child: SingleChildScrollView(
                 child: SelectableText(
@@ -247,8 +250,8 @@ class _UploadDialogState extends State<UploadDialog> {
               Expanded(
                 child: Text(
                   'Generate Flashcards',
-                  style: GoogleFonts.instrumentSerif(
-                    fontSize: 20,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: colors.white,
                   ),
@@ -265,7 +268,7 @@ class _UploadDialogState extends State<UploadDialog> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.red.withAlpha(25),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(_cardRadius),
                 border: Border.all(color: Colors.red.withAlpha(80)),
               ),
               child: Row(
@@ -314,18 +317,18 @@ class _UploadDialogState extends State<UploadDialog> {
           // Generate button
           SizedBox(
             width: double.infinity,
-            height: 46,
             child: ElevatedButton(
               onPressed: _processContent,
               style: ElevatedButton.styleFrom(
-                backgroundColor: colors.white,
-                foregroundColor: colors.darkGray,
+                backgroundColor: colors.accentBlue,
+                foregroundColor: colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_cardRadius)),
               ),
               child: Text(
                 'Generate Flashcards',
-                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -337,19 +340,19 @@ class _UploadDialogState extends State<UploadDialog> {
   Widget _buildFileSection() {
     return InkWell(
       onTap: _pickFiles,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(_cardRadius),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: colors.inputBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.inputBorder),
+          borderRadius: BorderRadius.circular(_cardRadius),
+          border: Border.all(color: colors.outline),
         ),
         child: Column(
           children: [
             if (_uploadedFiles.isEmpty) ...[
-              Icon(Icons.upload_file_rounded, size: 32, color: colors.secondary),
+              Icon(Icons.upload_file_rounded, size: 28, color: colors.secondary),
               const SizedBox(height: 8),
               Text(
                 'Click to upload files',
@@ -413,7 +416,7 @@ class _UploadDialogState extends State<UploadDialog> {
       maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: colors.secondary.withAlpha(150), fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: colors.secondary, fontSize: 14),
         filled: true,
         fillColor: colors.inputBackground,
         prefixIcon: Padding(
@@ -423,16 +426,16 @@ class _UploadDialogState extends State<UploadDialog> {
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.inputBorder),
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide(color: colors.outline),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.inputBorder),
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide(color: colors.outline),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.white.withAlpha(100)),
+          borderRadius: BorderRadius.circular(_cardRadius),
+          borderSide: BorderSide(color: colors.accentBlue),
         ),
       ),
     );
@@ -476,7 +479,7 @@ class _IconBtn extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(_cardRadius),
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Icon(icon, color: colors.secondary, size: 20),

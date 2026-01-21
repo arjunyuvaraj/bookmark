@@ -1,25 +1,41 @@
 import 'package:flutter/material.dart';
 
-const Color primaryBlue = Color.fromARGB(0, 0, 145, 255);
-const Color darkGray = Color(0xFF202124);
+// Notion-style monochromatic color scheme
+// Accent color: RGB(0, 145, 255)
+const Color accentBlue = Color.fromARGB(255, 0, 145, 255);
+
+// Monochromatic colors (whites, grays, blacks)
 const Color white = Color(0xFFFFFFFF);
+const Color offWhite = Color(0xFFFAFAFA);
+const Color lightGray = Color(0xFFEBEBEB);
+const Color mediumGray = Color(0xFF9B9B9B);
+const Color darkGray = Color(0xFF37352F);
+const Color black = Color(0xFF191919);
 
-Color primary = primaryBlue;
+// Primary colors
+Color primary = accentBlue;
 Color onPrimary = white;
-Color tertiary = primaryBlue;
+Color tertiary = accentBlue;
 
-Color background = darkGray;
-Color surface = const Color(0xFF2C2C2E);
+// Background colors (dark theme - Notion dark mode style)
+Color background = black;
+Color surface = const Color(0xFF252525);
 Color onSurface = white;
 
-Color secondary = const Color(0xFFBDBDBD);
+// Secondary/muted text
+Color secondary = mediumGray;
 Color outline = const Color(0xFF3A3A3A);
 
-Color buttonBackground = primaryBlue;
+// Button colors
+Color buttonBackground = accentBlue;
 Color buttonText = white;
 
-Color inputBackground = const Color(0xFF3C3C3E);
-Color inputBorder = const Color(0xFF4A4A4C);
+// Input colors
+Color inputBackground = const Color(0xFF2F2F2F);
+Color inputBorder = const Color(0xFF3A3A3A);
+
+// Legacy alias for compatibility
+const Color primaryBlue = accentBlue;
 
 ColorScheme colorScheme = ColorScheme(
   brightness: Brightness.dark,
@@ -29,7 +45,7 @@ ColorScheme colorScheme = ColorScheme(
   onSecondary: onPrimary,
   tertiary: tertiary,
   onTertiary: Colors.white,
-  error: Colors.red,
+  error: const Color(0xFFEB5757),
   onError: Colors.white,
   surface: surface,
   onSurface: onSurface,

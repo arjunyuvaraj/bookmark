@@ -12,5 +12,6 @@ const SizedBox largeHorizontalSpace = SizedBox(width: 18);
 // BOX SPACING
 const EdgeInsets universalPadding = EdgeInsets.all(32);
 
-// RADII
-const BorderRadius borderRadius = BorderRadius.all(Radius.circular(18));
+// RADII - Notion-style consistent slight radius
+const double notionRadius = 8.0;
+const BorderRadius borderRadius = BorderRadius.all(Radius.circular(notionRadius));
