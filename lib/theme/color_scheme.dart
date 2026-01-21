@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 
-// Primary blue accent
-const Color primaryBlue = Color(0xFF0A84FF); // Bright, modern blue
-const Color primaryBlueDark = Color(0xFF0066CC);
-const Color primaryBlueLight = Color(0xFF4DA2FF);
-
-// Black and white base
-const Color black = Color(0xFF000000);
+const Color primaryBlue = Color.fromARGB(0, 0, 145, 255);
+const Color darkGray = Color(0xFF202124);
 const Color white = Color(0xFFFFFFFF);
 const Color almostBlack = Color(0xFF0A0A0A);
-const Color darkGray = Color(0xFF1C1C1E);
 const Color mediumGray = Color(0xFF2C2C2E);
 const Color lightGray = Color(0xFF3A3A3C);
 const Color borderGray = Color(0xFF48484A);
