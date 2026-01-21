@@ -42,11 +42,13 @@ class _UploadDialogState extends State<UploadDialog> {
         setState(() {
           for (final file in result.files) {
             if (file.bytes != null) {
-              _uploadedFiles.add(_UploadedFile(
-                bytes: file.bytes!,
-                name: file.name,
-                mimeType: FileInput.getMimeType(file.name),
-              ));
+              _uploadedFiles.add(
+                _UploadedFile(
+                  bytes: file.bytes!,
+                  name: file.name,
+                  mimeType: FileInput.getMimeType(file.name),
+                ),
+              );
             }
           }
         });
@@ -74,7 +76,10 @@ class _UploadDialogState extends State<UploadDialog> {
           if (file.mimeType == 'application/pdf') {
             result = await _promptService.generateFromPdf(file.bytes);
           } else if (file.mimeType.startsWith('image/')) {
-            result = await _promptService.generateFromImage(file.bytes, file.mimeType);
+            result = await _promptService.generateFromImage(
+              file.bytes,
+              file.mimeType,
+            );
           } else if (file.mimeType == 'text/plain') {
             final text = String.fromCharCodes(file.bytes);
             result = await _promptService.generateFromText(text);
@@ -83,16 +88,28 @@ class _UploadDialogState extends State<UploadDialog> {
           }
         } else {
           final fileInputs = _uploadedFiles
-              .map((f) => FileInput(bytes: f.bytes, mimeType: f.mimeType, fileName: f.name))
+              .map(
+                (f) => FileInput(
+                  bytes: f.bytes,
+                  mimeType: f.mimeType,
+                  fileName: f.name,
+                ),
+              )
               .toList();
           result = await _promptService.generateFromMultipleFiles(fileInputs);
         }
       } else if (_youtubeController.text.trim().isNotEmpty) {
-        result = await _promptService.generateFromYouTube(_youtubeController.text.trim());
+        result = await _promptService.generateFromYouTube(
+          _youtubeController.text.trim(),
+        );
       } else if (_textController.text.trim().isNotEmpty) {
-        result = await _promptService.generateFromText(_textController.text.trim());
+        result = await _promptService.generateFromText(
+          _textController.text.trim(),
+        );
       } else {
-        throw Exception('Please upload files, paste a YouTube link, or enter text.');
+        throw Exception(
+          'Please upload files, paste a YouTube link, or enter text.',
+        );
       }
 
       setState(() {
@@ -133,8 +150,8 @@ class _UploadDialogState extends State<UploadDialog> {
         child: _isLoading
             ? _buildLoadingState()
             : _result != null
-                ? _buildResultState()
-                : _buildInputState(),
+            ? _buildResultState()
+            : _buildInputState(),
       ),
     );
   }
@@ -198,12 +215,23 @@ class _UploadDialogState extends State<UploadDialog> {
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: _result ?? ''));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+                    const SnackBar(
+                      content: Text('Copied to clipboard'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
                 },
               ),
-              _IconBtn(icon: Icons.refresh_rounded, tooltip: 'Start over', onTap: _clearAll),
-              _IconBtn(icon: Icons.close_rounded, tooltip: 'Close', onTap: () => Navigator.pop(context)),
+              _IconBtn(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Start over',
+                onTap: _clearAll,
+              ),
+              _IconBtn(
+                icon: Icons.close_rounded,
+                tooltip: 'Close',
+                onTap: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -254,7 +282,11 @@ class _UploadDialogState extends State<UploadDialog> {
                   ),
                 ),
               ),
-              _IconBtn(icon: Icons.close_rounded, tooltip: 'Close', onTap: () => Navigator.pop(context)),
+              _IconBtn(
+                icon: Icons.close_rounded,
+                tooltip: 'Close',
+                onTap: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -270,12 +302,19 @@ class _UploadDialogState extends State<UploadDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _error!,
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.redAccent),
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.redAccent,
+                      ),
                     ),
                   ),
                 ],
@@ -321,11 +360,16 @@ class _UploadDialogState extends State<UploadDialog> {
                 backgroundColor: colors.white,
                 foregroundColor: colors.darkGray,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: Text(
                 'Generate Flashcards',
-                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -349,7 +393,11 @@ class _UploadDialogState extends State<UploadDialog> {
         child: Column(
           children: [
             if (_uploadedFiles.isEmpty) ...[
-              Icon(Icons.upload_file_rounded, size: 32, color: colors.secondary),
+              Icon(
+                Icons.upload_file_rounded,
+                size: 32,
+                color: colors.secondary,
+              ),
               const SizedBox(height: 8),
               Text(
                 'Click to upload files',
@@ -372,18 +420,29 @@ class _UploadDialogState extends State<UploadDialog> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Icon(_getFileIcon(file.mimeType), size: 18, color: colors.white),
+                      Icon(
+                        _getFileIcon(file.mimeType),
+                        size: 18,
+                        color: colors.white,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           file.name,
-                          style: GoogleFonts.inter(fontSize: 13, color: colors.white),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: colors.white,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       GestureDetector(
                         onTap: () => _removeFile(index),
-                        child: Icon(Icons.close_rounded, size: 18, color: colors.secondary),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: colors.secondary,
+                        ),
                       ),
                     ],
                   ),
@@ -413,7 +472,10 @@ class _UploadDialogState extends State<UploadDialog> {
       maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: colors.secondary.withAlpha(150), fontSize: 14),
+        hintStyle: GoogleFonts.inter(
+          color: colors.secondary.withAlpha(150),
+          fontSize: 14,
+        ),
         filled: true,
         fillColor: colors.inputBackground,
         prefixIcon: Padding(
@@ -421,7 +483,10 @@ class _UploadDialogState extends State<UploadDialog> {
           child: Icon(icon, color: colors.secondary, size: 20),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: colors.inputBorder),
@@ -468,7 +533,11 @@ class _IconBtn extends StatelessWidget {
   final String tooltip;
   final VoidCallback onTap;
 
-  const _IconBtn({required this.icon, required this.tooltip, required this.onTap});
+  const _IconBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -491,5 +560,9 @@ class _UploadedFile {
   final String name;
   final String mimeType;
 
-  _UploadedFile({required this.bytes, required this.name, required this.mimeType});
+  _UploadedFile({
+    required this.bytes,
+    required this.name,
+    required this.mimeType,
+  });
 }

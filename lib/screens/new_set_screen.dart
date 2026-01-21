@@ -313,9 +313,7 @@ class _NewSetScreenState extends State<NewSetScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: _isLoading
-                      ? colors.primaryBlueDark
-                      : colors.primaryBlue,
+                  color: _isLoading ? colors.primary : colors.primaryBlue,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
