@@ -3,6 +3,9 @@ import 'package:bookmark/theme/text_theme.dart';
 import 'package:bookmark/utilities/extensions.dart';
 import 'package:flutter/material.dart';
 
+// Notion-style button radius
+const double _buttonRadius = 8.0;
+
 class CustomPrimaryButton extends StatelessWidget {
   final String label;
   final GestureTapCallback onTap;
@@ -17,20 +20,21 @@ class CustomPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: primary,
-      borderRadius: BorderRadius.circular(100),
+      borderRadius: BorderRadius.circular(_buttonRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(_buttonRadius),
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           alignment: Alignment.center,
           child: Text(
             label.capitalized,
             style: labelLarge.copyWith(
               color: onPrimary,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              letterSpacing: 0,
             ),
           ),
         ),
