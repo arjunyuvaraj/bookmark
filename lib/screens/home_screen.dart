@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
+import 'package:bookmark/components/upload_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  void _showUploadDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const UploadDialog(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ElevatedButton.icon(
-        onPressed: () {
-          
-        },
+        onPressed: () => _showUploadDialog(context),
         icon: const Icon(Icons.upload),
         label: Text(
           'Upload',
