@@ -1,9 +1,9 @@
+import 'package:bookmark/models/flashcard_model.dart';
+import 'package:bookmark/services/authentication_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
-import 'package:bookmark/models/flashcard_model.dart';
-import 'package:bookmark/services/authentication_service.dart';
 
 class NewSetScreen extends StatefulWidget {
   final SetModel? existingSet;
@@ -35,8 +35,12 @@ class _NewSetScreenState extends State<NewSetScreen>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+    _loadInitialCards();
+    _animationController.forward();
+  }
 
-    // Setup animations
+  void _setupAnimations() {
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -56,8 +60,9 @@ class _NewSetScreenState extends State<NewSetScreen>
             curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
           ),
         );
+  }
 
-    // Load existing set or preloaded cards
+  void _loadInitialCards() {
     if (widget.existingSet != null) {
       _loadExistingSet();
     } else if (widget.preloadedCards != null) {
@@ -66,8 +71,6 @@ class _NewSetScreenState extends State<NewSetScreen>
       _addNewCard();
       _addNewCard();
     }
-
-    _animationController.forward();
   }
 
   void _loadExistingSet() {
@@ -101,8 +104,7 @@ class _NewSetScreenState extends State<NewSetScreen>
     _descriptionController.dispose();
     _scrollController.dispose();
     for (var card in _cards) {
-      card.questionController.dispose();
-      card.answerController.dispose();
+      card.dispose();
     }
     super.dispose();
   }
@@ -117,7 +119,10 @@ class _NewSetScreenState extends State<NewSetScreen>
       );
     });
 
-    // Scroll to bottom after card is added
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -132,13 +137,20 @@ class _NewSetScreenState extends State<NewSetScreen>
   void _removeCard(int index) {
     if (_cards.length > 2) {
       setState(() {
-        _cards[index].questionController.dispose();
-        _cards[index].answerController.dispose();
+        _cards[index].dispose();
         _cards.removeAt(index);
       });
     } else {
       _showSnackbar('You must have at least 2 cards');
     }
+  }
+
+  bool _validateCards() {
+    return !_cards.any(
+      (card) =>
+          card.questionController.text.trim().isEmpty ||
+          card.answerController.text.trim().isEmpty,
+    );
   }
 
   Future<void> _saveSet() async {
@@ -147,11 +159,7 @@ class _NewSetScreenState extends State<NewSetScreen>
       return;
     }
 
-    if (_cards.any(
-      (card) =>
-          card.questionController.text.trim().isEmpty ||
-          card.answerController.text.trim().isEmpty,
-    )) {
+    if (!_validateCards()) {
       _showSnackbar('All cards must have a question and answer');
       return;
     }
@@ -165,56 +173,70 @@ class _NewSetScreenState extends State<NewSetScreen>
         return;
       }
 
-      final flashcards = _cards
-          .map(
-            (card) => Flashcard(
-              question: card.questionController.text.trim(),
-              answer: card.answerController.text.trim(),
-            ),
-          )
-          .toList();
-
-      final setModel = SetModel(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        cards: flashcards,
-        dateAdded: DateTime.now(),
-        sessions: 0,
-      );
+      final setModel = _buildSetModel();
 
       if (widget.existingSet != null) {
-        // Update existing set
-        final success = await _setService.updateSet(
-          user.uid,
-          widget.existingSet!.id!,
-          setModel,
-        );
-
-        if (success) {
-          _showSnackbar('Set updated successfully!');
-          Navigator.pop(context);
-        } else {
-          _showSnackbar('Failed to update set');
-        }
+        await _updateExistingSet(user.uid, setModel);
       } else {
-        // Create new set
-        final setId = await _setService.createSet(user.uid, setModel);
-
-        if (setId != null) {
-          _showSnackbar('Set created successfully!');
-          Navigator.pop(context);
-        } else {
-          _showSnackbar('Failed to create set');
-        }
+        await _createNewSet(user.uid, setModel);
       }
     } catch (e) {
       _showSnackbar('Error: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  SetModel _buildSetModel() {
+    final flashcards = _cards
+        .map(
+          (card) => Flashcard(
+            question: card.questionController.text.trim(),
+            answer: card.answerController.text.trim(),
+          ),
+        )
+        .toList();
+
+    return SetModel(
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      cards: flashcards,
+      dateAdded: DateTime.now(),
+      sessions: 0,
+    );
+  }
+
+  Future<void> _updateExistingSet(String userId, SetModel setModel) async {
+    final success = await _setService.updateSet(
+      userId,
+      widget.existingSet!.id!,
+      setModel,
+    );
+
+    if (success) {
+      _showSnackbar('Set updated successfully!');
+      if (mounted) Navigator.pop(context);
+    } else {
+      _showSnackbar('Failed to update set');
+    }
+  }
+
+  Future<void> _createNewSet(String userId, SetModel setModel) async {
+    final setId = await _setService.createSet(userId, setModel);
+
+    if (setId != null) {
+      _showSnackbar('Set created successfully!');
+      if (mounted) Navigator.pop(context);
+    } else {
+      _showSnackbar('Failed to create set');
     }
   }
 
   void _showSnackbar(String message) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -227,52 +249,34 @@ class _NewSetScreenState extends State<NewSetScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: colors.almostBlack,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSetInfo(),
-                        const SizedBox(height: 32),
-                        _buildCardsSection(),
-                        const SizedBox(height: 100),
-                      ],
-                    ),
-                  ),
-                ),
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSetInfo(),
+                  const SizedBox(height: 32),
+                  _buildCardsSection(),
+                  const SizedBox(height: 100),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        color: colors.darkGray,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.borderGray.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.all(24),
       child: Row(
         children: [
           Expanded(
@@ -285,7 +289,7 @@ class _NewSetScreenState extends State<NewSetScreen>
                       : 'Create a new study set',
                   style: GoogleFonts.inter(
                     fontSize: 28,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: colors.white,
                     letterSpacing: -0.5,
                   ),
@@ -302,96 +306,85 @@ class _NewSetScreenState extends State<NewSetScreen>
             ),
           ),
           const SizedBox(width: 16),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: _isLoading ? null : _saveSet,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: _isLoading ? colors.primary : colors.primaryBlue,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
+          _buildSaveButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _isLoading ? null : _saveSet,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          decoration: BoxDecoration(
+            color: _isLoading ? colors.mediumGray : colors.primaryBlue,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: _isLoading
+                ? []
+                : [
                     BoxShadow(
                       color: colors.primaryBlue.withOpacity(0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ],
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colors.white,
-                          ),
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check,
-                            color: colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.existingSet != null ? 'Save' : 'Create',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
           ),
-        ],
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(colors.white),
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check, color: colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.existingSet != null ? 'Save' : 'Create',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
   Widget _buildSetInfo() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.darkGray,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.borderGray.withOpacity(0.3), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField(
-            controller: _titleController,
-            label: 'Title',
-            hint: 'Enter a title, like "Biology - Chapter 3"',
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Title is required';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            controller: _descriptionController,
-            label: 'Description (optional)',
-            hint: 'Add a description...',
-            maxLines: 3,
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(
+          controller: _titleController,
+          label: 'Title',
+          hint: 'Enter a title, like "Biology - Chapter 3"',
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Title is required';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 20),
+        _buildTextField(
+          controller: _descriptionController,
+          label: 'Description (optional)',
+          hint: 'Add a description...',
+          maxLines: 3,
+        ),
+      ],
     );
   }
 
@@ -406,12 +399,12 @@ class _NewSetScreenState extends State<NewSetScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          label.toUpperCase(),
           style: GoogleFonts.inter(
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: colors.textGray,
-            letterSpacing: 0.5,
+            letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 8),
@@ -424,17 +417,17 @@ class _NewSetScreenState extends State<NewSetScreen>
             hintText: hint,
             hintStyle: GoogleFonts.inter(
               fontSize: 15,
-              color: colors.textGray.withOpacity(0.5),
+              color: colors.textGray.withOpacity(0.4),
             ),
             filled: true,
-            fillColor: colors.mediumGray,
+            fillColor: colors.almostBlack,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: colors.borderGray),
+              borderSide: BorderSide(color: colors.borderGray.withOpacity(0.5)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: colors.borderGray),
+              borderSide: BorderSide(color: colors.borderGray.withOpacity(0.5)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -470,54 +463,48 @@ class _NewSetScreenState extends State<NewSetScreen>
                 ),
               ),
             ),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _addNewCard,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.mediumGray,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: colors.borderGray, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.add,
-                        color: colors.primaryBlue,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Add card',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            _buildAddCardButton(),
           ],
         ),
         const SizedBox(height: 20),
         ..._cards.asMap().entries.map((entry) {
-          final index = entry.key;
-          final card = entry.value;
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: _buildCardItem(index, card),
+            child: _buildCardItem(entry.key, entry.value),
           );
         }).toList(),
       ],
+    );
+  }
+
+  Widget _buildAddCardButton() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _addNewCard,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: colors.primaryBlue,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add, color: colors.white, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Add card',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -525,83 +512,78 @@ class _NewSetScreenState extends State<NewSetScreen>
     return Container(
       decoration: BoxDecoration(
         color: colors.darkGray,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.borderGray.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.borderGray.withOpacity(0.5), width: 1),
       ),
       child: Column(
+        children: [_buildCardHeader(index), _buildCardContent(card)],
+      ),
+    );
+  }
+
+  Widget _buildCardHeader(int index) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: colors.borderGray.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
         children: [
-          // Card header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: colors.borderGray.withOpacity(0.3),
-                  width: 1,
+              color: colors.primaryBlue,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Text(
+                '${index + 1}',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: colors.white,
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: colors.primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${index + 1}',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: colors.primaryBlue,
-                      ),
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (_cards.length > 2)
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => _removeCard(index),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: colors.mediumGray,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 18,
-                          color: colors.textGray,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
-          // Card content
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildCardTextField(
-                  controller: card.questionController,
-                  label: 'QUESTION',
-                  hint: 'Enter question',
-                ),
-                const SizedBox(height: 16),
-                _buildCardTextField(
-                  controller: card.answerController,
-                  label: 'ANSWER',
-                  hint: 'Enter answer',
-                ),
-              ],
-            ),
+          const Spacer(),
+          if (_cards.length > 2) _buildDeleteButton(index),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(int index) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _removeCard(index),
+        child: Icon(Icons.delete_outline, size: 18, color: colors.textGray),
+      ),
+    );
+  }
+
+  Widget _buildCardContent(_FlashcardItem card) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          _buildCardTextField(
+            controller: card.questionController,
+            label: 'QUESTION',
+            hint: 'Enter question',
+          ),
+          const SizedBox(width: 16),
+          _buildCardTextField(
+            controller: card.answerController,
+            label: 'ANSWER',
+            hint: 'Enter answer',
           ),
         ],
       ),
@@ -613,45 +595,55 @@ class _NewSetScreenState extends State<NewSetScreen>
     required String label,
     required String hint,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: colors.textGray,
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          style: GoogleFonts.inter(fontSize: 15, color: colors.white),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.inter(
-              fontSize: 15,
-              color: colors.textGray.withOpacity(0.4),
-            ),
-            filled: true,
-            fillColor: colors.mediumGray,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: colors.primaryBlue, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.textGray,
+              letterSpacing: 1,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            style: GoogleFonts.inter(fontSize: 15, color: colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 15,
+                color: colors.textGray.withOpacity(0.4),
+              ),
+              filled: true,
+              fillColor: colors.almostBlack,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: colors.borderGray.withOpacity(0.5),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: colors.borderGray.withOpacity(0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: colors.primaryBlue, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -664,4 +656,9 @@ class _FlashcardItem {
     required this.questionController,
     required this.answerController,
   });
+
+  void dispose() {
+    questionController.dispose();
+    answerController.dispose();
+  }
 }

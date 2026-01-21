@@ -8,7 +8,7 @@ const Color primaryBlue = accentBlue; // Define this first for use below
 // Monochromatic colors (whites, grays, blacks)
 const Color white = Color(0xFFFFFFFF);
 const Color almostBlack = Color(0xFF0A0A0A);
-const Color black = Color(0xFF000000);
+const Color black = Color(0xFF202124);
 const Color darkGray = Color(0xFF1C1C1E);
 const Color mediumGray = Color(0xFF2C2C2E);
 const Color lightGray = Color(0xFF3A3A3C);
