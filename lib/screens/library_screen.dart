@@ -1,4 +1,5 @@
 import 'package:bookmark/models/flashcard_model.dart';
+import 'package:bookmark/screens/flashcard_view_screen.dart';
 import 'package:bookmark/services/flashcard_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -41,7 +42,6 @@ class LibraryScreen extends StatelessWidget {
 
 class FlashcardSetCard extends StatelessWidget {
   final Map<String, dynamic> set;
-
   const FlashcardSetCard({super.key, required this.set});
 
   @override
@@ -55,8 +55,13 @@ class FlashcardSetCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // Navigate to flashcard practice screen
-          // Navigator.push(context, MaterialPageRoute(builder: (context) => FlashcardPracticeScreen(set: set)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  FlashcardPracticeScreen(set: SetModel.fromJson(set)),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
