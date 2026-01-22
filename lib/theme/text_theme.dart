@@ -1,52 +1,59 @@
-import 'package:bookmark/theme/color_scheme.dart';
-import 'package:bookmark/utilities/helper_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:bookmark/utilities/helper_functions.dart';
 
-final displayLarge = GoogleFonts.ibmPlexMono(
+// All text styles use Inter for a clean, modern Notion-like look
+// No serif fonts - clean sans-serif throughout
+
+final displayLarge = GoogleFonts.inter(
   fontSize: 72,
-  fontWeight: FontWeight.w500,
+  fontWeight: FontWeight.w600,
   letterSpacing: getLetterSpacing(72, -0.02),
   height: 1.05,
-  color: primary,
 );
 
-final displayMedium = GoogleFonts.instrumentSerif(
+final displayMedium = GoogleFonts.inter(
   fontSize: 56,
-  fontWeight: FontWeight.w400,
+  fontWeight: FontWeight.w600,
   letterSpacing: getLetterSpacing(56, -0.02),
 );
 
-final displaySmall = GoogleFonts.instrumentSerif(
+final displaySmall = GoogleFonts.inter(
   fontSize: 44,
-  fontWeight: FontWeight.w400,
+  fontWeight: FontWeight.w600,
+  letterSpacing: getLetterSpacing(44, -0.01),
 );
 
-final headlineLarge = GoogleFonts.instrumentSerif(
+final headlineLarge = GoogleFonts.inter(
   fontSize: 36,
-  fontWeight: FontWeight.w400,
+  fontWeight: FontWeight.w600,
 );
 
 final headlineMedium = GoogleFonts.inter(
   fontSize: 20,
-  fontWeight: FontWeight.w400,
-  color: secondary,
+  fontWeight: FontWeight.w500,
   letterSpacing: getLetterSpacing(20, 0.02),
 );
 
 final headlineSmall = GoogleFonts.inter(
   fontSize: 18,
-  fontWeight: FontWeight.w400,
+  fontWeight: FontWeight.w500,
 );
 
-final titleLarge = GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w500);
+final titleLarge = GoogleFonts.inter(
+  fontSize: 24,
+  fontWeight: FontWeight.w600,
+);
 
 final titleMedium = GoogleFonts.inter(
   fontSize: 20,
   fontWeight: FontWeight.w500,
 );
 
-final titleSmall = GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w500);
+final titleSmall = GoogleFonts.inter(
+  fontSize: 18,
+  fontWeight: FontWeight.w500,
+);
 
 final labelLarge = GoogleFonts.inter(
   fontSize: 16,
@@ -62,7 +69,6 @@ final labelMedium = GoogleFonts.inter(
 final labelSmall = GoogleFonts.inter(
   fontSize: 13,
   fontWeight: FontWeight.w500,
-  color: tertiary,
   letterSpacing: getLetterSpacing(13, 0.12),
 );
 
@@ -88,19 +94,15 @@ TextTheme textTheme = TextTheme(
   displayLarge: displayLarge,
   displayMedium: displayMedium,
   displaySmall: displaySmall,
-
   headlineLarge: headlineLarge,
   headlineMedium: headlineMedium,
   headlineSmall: headlineSmall,
-
   titleLarge: titleLarge,
   titleMedium: titleMedium,
   titleSmall: titleSmall,
-
   labelLarge: labelLarge,
   labelMedium: labelMedium,
   labelSmall: labelSmall,
-
   bodyLarge: bodyLarge,
   bodyMedium: bodyMedium,
   bodySmall: bodySmall,
