@@ -9,6 +9,7 @@ import 'dashboard_screen.dart';
 import 'library_screen.dart';
 import 'upload_screen.dart';
 import 'settings_screen.dart';
+import 'chatbot_screen.dart';
 
 // Notion-style radius
 const double _sidebarRadius = 8.0;
@@ -28,7 +29,7 @@ class _AppShellState extends State<AppShell>
 
   final List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_rounded, label: 'Home'),
-    _NavItem(icon: Icons.add_box_rounded, label: 'New Set'),
+    _NavItem(icon: Icons.chat_rounded, label: 'Chatbot'),
     _NavItem(icon: Icons.dashboard_rounded, label: 'Dashboard'),
     _NavItem(icon: Icons.library_books_rounded, label: 'Library'),
     _NavItem(icon: Icons.upload_rounded, label: 'Quick Upload'),
@@ -37,7 +38,7 @@ class _AppShellState extends State<AppShell>
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const NewSetScreen(),
+    const ChatbotScreen(),
     const DashboardScreen(),
     const LibraryScreen(),
     const UploadScreen(),
