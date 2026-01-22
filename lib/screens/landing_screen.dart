@@ -69,7 +69,7 @@ class _LandingScreenState extends State<LandingScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
           decoration: BoxDecoration(
-            color: colors.surface.withValues(alpha: 0.8),
+            color: colors.black.withValues(alpha: 0.8),
             border: Border(
               bottom: BorderSide(
                 color: _showHeaderBorder ? colors.outline : Colors.transparent,
