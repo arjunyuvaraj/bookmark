@@ -1,4 +1,3 @@
-import 'package:bookmark/screens/new_set_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bookmark/theme/color_scheme.dart' as colors;
