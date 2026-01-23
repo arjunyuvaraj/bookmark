@@ -9,9 +9,7 @@ class PageContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 420, // sweet spot for auth pages
-        ),
+        constraints: const BoxConstraints(maxWidth: 420),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: child,
