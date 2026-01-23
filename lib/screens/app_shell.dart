@@ -1,8 +1,6 @@
-import 'package:bookmark/components/custom_secondary_button.dart';
 import 'package:bookmark/screens/new_set_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:bookmark/theme/color_scheme.dart' as colors;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'home_screen.dart';
 import 'dashboard_screen.dart';
@@ -11,7 +9,6 @@ import 'upload_screen.dart';
 import 'settings_screen.dart';
 import 'chatbot_screen.dart';
 
-// Notion-style radius
 const double _sidebarRadius = 8.0;
 
 class AppShell extends StatefulWidget {
@@ -77,11 +74,14 @@ class _AppShellState extends State<AppShell>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Row(
         children: [
-          _buildSidebar(),
+          _buildSidebar(theme, colorScheme),
           Expanded(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -93,14 +93,21 @@ class _AppShellState extends State<AppShell>
     );
   }
 
-  Widget _buildSidebar() {
+  Widget _buildSidebar(ThemeData theme, ColorScheme colorScheme) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? 'User';
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: 200,
       margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(_sidebarRadius),
-        border: Border.all(color: colors.outline, width: 1),
+        border: Border.all(
+          color: colorScheme.outline.withAlpha(isDark ? 255 : 51),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +118,7 @@ class _AppShellState extends State<AppShell>
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _navItems.length,
               itemBuilder: (context, index) {
-                return _buildNavItem(index);
+                return _buildNavItem(index, theme, colorScheme);
               },
             ),
           ),
@@ -123,20 +130,20 @@ class _AppShellState extends State<AppShell>
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: colors.outline,
+                    color: colorScheme.outline.withAlpha(isDark ? 255 : 102),
                     borderRadius: BorderRadius.circular(_sidebarRadius),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person,
-                    color: colors.white,
+                    color: colorScheme.onSurface,
                     size: 18,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'User',
-                    style: GoogleFonts.inter(color: colors.white, fontSize: 14),
+                    displayName,
+                    style: theme.textTheme.bodySmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -148,9 +155,10 @@ class _AppShellState extends State<AppShell>
     );
   }
 
-  Widget _buildNavItem(int index) {
+  Widget _buildNavItem(int index, ThemeData theme, ColorScheme colorScheme) {
     final isSelected = _selectedIndex == index;
     final item = _navItems[index];
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
@@ -164,22 +172,31 @@ class _AppShellState extends State<AppShell>
             curve: Curves.easeInOut,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? colors.outline : Colors.transparent,
+              color: isSelected
+                  ? (isDark
+                      ? colorScheme.outline
+                      : colorScheme.primary.withAlpha(26))
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(_sidebarRadius),
             ),
             child: Row(
               children: [
                 Icon(
                   item.icon,
-                  color: isSelected ? colors.white : colors.secondary,
+                  color: isSelected
+                      ? (isDark ? colorScheme.onSurface : colorScheme.primary)
+                      : colorScheme.onSurface.withAlpha(153),
                   size: 18,
                 ),
                 const SizedBox(width: 10),
                 Text(
                   item.label,
-                  style: GoogleFonts.inter(
-                    color: isSelected ? colors.white : colors.secondary,
-                    fontSize: 14,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isSelected
+                        ? (isDark
+                            ? colorScheme.onSurface
+                            : colorScheme.primary)
+                        : colorScheme.onSurface.withAlpha(153),
                     fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),

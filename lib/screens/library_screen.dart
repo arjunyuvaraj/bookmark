@@ -46,6 +46,8 @@ class FlashcardSetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final title = set['title'] ?? 'Untitled Set';
     final description = set['description'] ?? '';
     final cardCount = (set['cards'] as List?)?.length ?? 0;
@@ -54,10 +56,7 @@ class FlashcardSetCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () {
-          // Navigate to flashcard practice screen
-          // Navigator.push(context, MaterialPageRoute(builder: (context) => FlashcardPracticeScreen(set: set)));
-        },
+        onTap: () {},
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -68,29 +67,15 @@ class FlashcardSetCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text(title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: colorScheme.primary.withAlpha(26),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      '$cardCount cards',
-                      style: TextStyle(
-                        color: Theme.of(context).primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: Text('$cardCount cards', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -98,9 +83,7 @@ class FlashcardSetCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   description,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withAlpha(153)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -108,12 +91,9 @@ class FlashcardSetCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.history, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.history, size: 16, color: colorScheme.onSurface.withAlpha(153)),
                   const SizedBox(width: 4),
-                  Text(
-                    '$sessions sessions',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
+                  Text('$sessions sessions', style: TextStyle(color: colorScheme.onSurface.withAlpha(153), fontSize: 14)),
                 ],
               ),
             ],
