@@ -9,7 +9,6 @@ import 'upload_screen.dart';
 import 'settings_screen.dart';
 import 'chatbot_screen.dart';
 
-// Notion-style radius
 const double _sidebarRadius = 8.0;
 
 class AppShell extends StatefulWidget {
