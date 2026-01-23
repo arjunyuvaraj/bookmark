@@ -2,25 +2,47 @@ import 'package:bookmark/theme/color_scheme.dart';
 import 'package:bookmark/theme/text_theme.dart';
 import 'package:flutter/material.dart';
 
-// Notion-style input radius
-const double inputRadius = 8.0;
+const double inputRadius = 6.0;
 
-InputDecorationTheme inputTheme = InputDecorationTheme(
+InputDecorationTheme lightInputTheme = InputDecorationTheme(
   filled: true,
-  fillColor: inputBackground,
+  fillColor: lightSurface,
   floatingLabelBehavior: FloatingLabelBehavior.never,
   border: OutlineInputBorder(
     borderRadius: BorderRadius.circular(inputRadius),
-    borderSide: BorderSide(color: inputBorder, width: 1),
+    borderSide: BorderSide(color: lightBorder, width: 1),
   ),
-  hintStyle: bodyMedium.copyWith(color: secondary),
-  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  hintStyle: bodyMedium.copyWith(color: lightTextSecondary),
+  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
   enabledBorder: OutlineInputBorder(
-    borderSide: BorderSide(color: inputBorder, width: 1),
+    borderSide: BorderSide(color: lightBorder, width: 1),
     borderRadius: BorderRadius.circular(inputRadius),
   ),
   focusedBorder: OutlineInputBorder(
-    borderSide: BorderSide(color: primary, width: 1.5),
+    borderSide: BorderSide(color: primaryBlue, width: 1.5),
     borderRadius: BorderRadius.circular(inputRadius),
   ),
 );
+
+InputDecorationTheme darkInputTheme = InputDecorationTheme(
+  filled: true,
+  fillColor: darkSurface,
+  floatingLabelBehavior: FloatingLabelBehavior.never,
+  border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(inputRadius),
+    borderSide: BorderSide(color: darkBorder, width: 1),
+  ),
+  hintStyle: bodyMedium.copyWith(color: darkTextSecondary),
+  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+  enabledBorder: OutlineInputBorder(
+    borderSide: BorderSide(color: darkBorder, width: 1),
+    borderRadius: BorderRadius.circular(inputRadius),
+  ),
+  focusedBorder: OutlineInputBorder(
+    borderSide: BorderSide(color: primaryBlue, width: 1.5),
+    borderRadius: BorderRadius.circular(inputRadius),
+  ),
+);
+
+// Legacy export for backwards compatibility
+InputDecorationTheme inputTheme = lightInputTheme;

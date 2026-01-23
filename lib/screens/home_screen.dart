@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 48),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -38,45 +38,50 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Welcome back,',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: colorScheme.onSurface.withAlpha(153),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: colorScheme.onSurface.withAlpha(128),
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           displayName,
-                          style: theme.textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.headlineLarge,
                         ),
                       ],
                     ),
                   ),
 
-                  // Upload button
                   _UploadButton(onPressed: () => _showUploadDialog(context)),
                 ],
               ),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 56),
 
-              // Quick actions section
               Text(
-                'Quick actions',
+                'QUICK ACTIONS',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.onSurface.withAlpha(102),
-                  letterSpacing: 1.2,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               Row(
                 children: [
                   _QuickActionCard(
                     icon: Icons.upload_file_outlined,
                     title: 'Upload',
-                    subtitle: 'Add new content',
+                    subtitle: 'Add new study content',
                     onTap: () => _showUploadDialog(context),
+                  ),
+                  const SizedBox(width: 16),
+                  _QuickActionCard(
+                    icon: Icons.library_books_outlined,
+                    title: 'Library',
+                    subtitle: 'View your study sets',
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -99,16 +104,20 @@ class _UploadButton extends StatelessWidget {
 
     return FilledButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.add, size: 20),
-      label: const Text('Upload'),
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text('New'),
       style: FilledButton.styleFrom(
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        minimumSize: const Size(0, 48),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
-        textStyle: Theme.of(context).textTheme.labelLarge,
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -137,46 +146,44 @@ class _QuickActionCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: colorScheme.onSurface.withAlpha(13),
         child: Container(
-          width: 180,
-          padding: const EdgeInsets.all(20),
+          width: 200,
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark
-                ? colorScheme.surface
-                : colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
+            color: isDark ? colorScheme.surface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: colorScheme.outline.withAlpha(51),
+              color: colorScheme.outline,
+              width: 1,
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withAlpha(26),
-                  borderRadius: BorderRadius.circular(8),
+                  color: colorScheme.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
                   icon,
-                  size: 24,
+                  size: 22,
                   color: colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Text(
                 title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.titleSmall,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withAlpha(153),
+                  color: colorScheme.onSurface.withAlpha(128),
                 ),
               ),
             ],
