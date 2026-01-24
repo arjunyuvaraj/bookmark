@@ -53,26 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       AuthenticationService().signInWithGoogle(context);
                     },
                   ),
-                  const SizedBox(height: 14),
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/app');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      minimumSize: const Size(0, 52),
-                      side: BorderSide(color: colorScheme.outline),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    child: Text(
-                      'Continue as Guest',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 40),
                   Row(
                     children: [

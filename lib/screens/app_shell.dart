@@ -15,18 +15,43 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class _AppShellState extends State<AppShell>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
   final List<_NavItem> _navItems = [
-    _NavItem(icon: Icons.home_outlined, selectedIcon: Icons.home_rounded, label: 'Home'),
-    _NavItem(icon: Icons.chat_outlined, selectedIcon: Icons.chat_rounded, label: 'Chatbot'),
-    _NavItem(icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard_rounded, label: 'Dashboard'),
-    _NavItem(icon: Icons.library_books_outlined, selectedIcon: Icons.library_books_rounded, label: 'Library'),
-    _NavItem(icon: Icons.upload_outlined, selectedIcon: Icons.upload_rounded, label: 'Quick Upload'),
-    _NavItem(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Account'),
+    _NavItem(
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home_rounded,
+      label: 'Home',
+    ),
+    _NavItem(
+      icon: Icons.chat_outlined,
+      selectedIcon: Icons.chat_rounded,
+      label: 'Chatbot',
+    ),
+    _NavItem(
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard_rounded,
+      label: 'Dashboard',
+    ),
+    _NavItem(
+      icon: Icons.library_books_outlined,
+      selectedIcon: Icons.library_books_rounded,
+      label: 'Library',
+    ),
+    _NavItem(
+      icon: Icons.upload_outlined,
+      selectedIcon: Icons.upload_rounded,
+      label: 'Quick Upload',
+    ),
+    _NavItem(
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person,
+      label: 'Account',
+    ),
   ];
 
   final List<Widget> _screens = [
@@ -94,9 +119,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     return Container(
       width: 240,
       padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-      ),
+      decoration: BoxDecoration(color: colorScheme.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -115,7 +138,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               itemCount: _navItems.length,
-              itemBuilder: (context, index) => _buildNavItem(index, theme, colorScheme),
+              itemBuilder: (context, index) =>
+                  _buildNavItem(index, theme, colorScheme),
             ),
           ),
           Padding(
@@ -129,7 +153,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                     color: colorScheme.primary.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(Icons.person_outline, color: colorScheme.primary, size: 20),
+                  child: Icon(
+                    Icons.person_outline,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -163,21 +191,27 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? colorScheme.primary.withAlpha(20) : Colors.transparent,
+              color: isSelected
+                  ? colorScheme.primary.withAlpha(20)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               children: [
                 Icon(
                   isSelected ? item.selectedIcon : item.icon,
-                  color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(153),
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withAlpha(153),
                   size: 22,
                 ),
                 const SizedBox(width: 14),
                 Text(
                   item.label,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(180),
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.onSurface.withAlpha(180),
                     fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),
@@ -195,5 +229,9 @@ class _NavItem {
   final IconData selectedIcon;
   final String label;
 
-  _NavItem({required this.icon, required this.selectedIcon, required this.label});
+  _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
 }

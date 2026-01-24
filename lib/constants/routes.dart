@@ -1,4 +1,5 @@
 import 'package:bookmark/screens/authentication_gate.dart';
+import 'package:bookmark/screens/landing_screen.dart';
 import 'package:bookmark/screens/login_screen.dart';
 import 'package:bookmark/screens/register_screen.dart';
 import 'package:bookmark/screens/app_shell.dart';
@@ -8,6 +9,7 @@ const String initialRoute = '/';
 const Widget initialScreen = AuthenticationGate();
 Map<String, WidgetBuilder> routes = {
   '/login': (context) => const LoginScreen(),
+  '/landing': (context) => const LandingScreen(),
   '/register': (context) => const RegisterScreen(),
   '/app': (context) => const AppShell(),
 };

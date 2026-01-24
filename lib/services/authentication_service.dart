@@ -161,9 +161,13 @@ class AuthenticationService {
   }
 
   Future<void> signOut(BuildContext context) async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
-    Navigator.pushNamed(context, '/');
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      displayErrorToUser("Error: ${e.toString()}", context);
+    }
+    Navigator.pushNamed(context, '/landing');
   }
 
   Future<void> deleteAccount() async {
