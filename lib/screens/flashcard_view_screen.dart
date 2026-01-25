@@ -3,6 +3,7 @@ import 'package:bookmark/screens/flashcard_setting_screen.dart';
 import 'package:bookmark/screens/test_screen.dart';
 import 'package:bookmark/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
@@ -165,25 +166,40 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     final cards = widget.set.cards;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildHeader(context),
-              Expanded(child: _buildMainContent(context, cards)),
-            ],
-          ),
-          if (isMenuOpen)
-            GestureDetector(
-              onTap: _toggleMenu,
-              child: Container(
-                color: Colors.black.withAlpha(isDark ? 128 : 77),
-              ),
+    return KeyboardListener(
+      focusNode: FocusNode()..requestFocus(),
+      autofocus: true,
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _nextCard();
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            _previousCard();
+          } else if (event.logicalKey == LogicalKeyboardKey.space) {
+            _flipCard();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(context),
+                Expanded(child: _buildMainContent(context, cards)),
+              ],
             ),
-          _buildMenu(context),
-        ],
+            if (isMenuOpen)
+              GestureDetector(
+                onTap: _toggleMenu,
+                child: Container(
+                  color: Colors.black.withAlpha(isDark ? 128 : 77),
+                ),
+              ),
+            _buildMenu(context),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/services/flashcard_service.dart';
 import 'package:bookmark/services/prompt_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -23,6 +24,7 @@ class _TestScreenState extends State<TestScreen> {
   int _currentQuestion = 0;
   int _score = 0;
   bool _showResults = false;
+  bool _showQuestionNavigator = false;
 
   List<TestQuestion> _questions = [];
   Map<int, String> _userAnswers = {};
@@ -48,7 +50,6 @@ class _TestScreenState extends State<TestScreen> {
     });
 
     try {
-      // Create a prompt to generate test questions
       final cardsJson = widget.set.cards
           .map((c) => {'question': c.question, 'answer': c.answer})
           .toList();
@@ -76,7 +77,6 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
 
       final response = await _promptService.generateFromText(prompt);
 
-      // Parse the response
       String cleanJson = response.trim();
       if (cleanJson.startsWith('```json')) {
         cleanJson = cleanJson.substring(7);
@@ -117,6 +117,13 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
   void _selectAnswer(int optionIndex) {
     setState(() {
       _userAnswers[_currentQuestion] = optionIndex.toString();
+    });
+  }
+
+  void _jumpToQuestion(int index) {
+    setState(() {
+      _currentQuestion = index;
+      _showQuestionNavigator = false;
     });
   }
 
@@ -162,30 +169,240 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
     });
   }
 
+  int get _unansweredCount {
+    return _questions.length - _userAnswers.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
+    return KeyboardListener(
+      focusNode: FocusNode()..requestFocus(),
+      autofocus: true,
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent && !_showResults && _testGenerated) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _nextQuestion();
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            _previousQuestion();
+          } else if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+              event.logicalKey == LogicalKeyboardKey.keyA) {
+            _selectAnswer(0);
+          } else if (event.logicalKey == LogicalKeyboardKey.digit2 ||
+              event.logicalKey == LogicalKeyboardKey.keyB) {
+            _selectAnswer(1);
+          } else if (event.logicalKey == LogicalKeyboardKey.digit3 ||
+              event.logicalKey == LogicalKeyboardKey.keyC) {
+            _selectAnswer(2);
+          } else if (event.logicalKey == LogicalKeyboardKey.digit4 ||
+              event.logicalKey == LogicalKeyboardKey.keyD) {
+            _selectAnswer(3);
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text(
+            'Test: ${widget.set.title}',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
+          ),
+          backgroundColor: colors.surface.withAlpha(230),
+          elevation: 0,
+          actions: [
+            if (_testGenerated && !_showResults)
+              IconButton(
+                icon: const Icon(Icons.grid_view_rounded),
+                tooltip: 'Question Navigator',
+                onPressed: () {
+                  setState(() {
+                    _showQuestionNavigator = !_showQuestionNavigator;
+                  });
+                },
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            _isGenerating
+                ? _buildLoading(context)
+                : _showResults
+                ? _buildResults(context)
+                : _buildTest(context),
+            if (_showQuestionNavigator)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showQuestionNavigator = false;
+                  });
+                },
+                child: Container(color: Colors.black.withAlpha(128)),
+              ),
+            if (_showQuestionNavigator) _buildQuestionNavigator(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionNavigator(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Test: ${widget.set.title}',
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 500),
+        decoration: BoxDecoration(
+          color: isDark ? colors.surface : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.outline.withAlpha(128)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(51),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Question Navigator',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        _showQuestionNavigator = false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: colors.outline.withAlpha(77), height: 1),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(20),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1,
+                ),
+                itemCount: _questions.length,
+                itemBuilder: (context, index) {
+                  final isAnswered = _userAnswers.containsKey(index);
+                  final isCurrent = index == _currentQuestion;
+
+                  return InkWell(
+                    onTap: () => _jumpToQuestion(index),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? colors.primary
+                            : isAnswered
+                            ? colors.primary.withAlpha(26)
+                            : colors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isCurrent
+                              ? colors.primary
+                              : isAnswered
+                              ? colors.primary.withAlpha(128)
+                              : colors.outline.withAlpha(128),
+                          width: isCurrent ? 2 : 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isCurrent
+                                ? colors.onPrimary
+                                : isAnswered
+                                ? colors.primary
+                                : colors.onSurface.withAlpha(153),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Divider(color: colors.outline.withAlpha(77), height: 1),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  _buildLegendItem(context, colors.primary, 'Current'),
+                  const SizedBox(width: 16),
+                  _buildLegendItem(
+                    context,
+                    colors.primary.withAlpha(26),
+                    'Answered',
+                  ),
+                  const SizedBox(width: 16),
+                  _buildLegendItem(
+                    context,
+                    colors.surface,
+                    'Not Answered',
+                    borderColor: colors.outline.withAlpha(128),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(
+    BuildContext context,
+    Color color,
+    String label, {
+    Color? borderColor,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+            border: borderColor != null ? Border.all(color: borderColor) : null,
           ),
         ),
-        backgroundColor: colors.surface.withAlpha(230),
-        elevation: 0,
-      ),
-      body: _isGenerating
-          ? _buildLoading(context)
-          : _showResults
-          ? _buildResults(context)
-          : _buildTest(context),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.inter(fontSize: 12, color: colors.secondary),
+        ),
+      ],
     );
   }
 
@@ -215,9 +432,15 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
 
     return Column(
       children: [
-        // Progress bar
+        // Progress bar with summary
         Container(
           padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: colors.surface.withAlpha(128),
+            border: Border(
+              bottom: BorderSide(color: colors.outline.withAlpha(77)),
+            ),
+          ),
           child: Column(
             children: [
               Row(
@@ -227,14 +450,30 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
                     'Question ${_currentQuestion + 1} of ${_questions.length}',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: colors.secondary,
+                      fontWeight: FontWeight.w500,
+                      color: colors.onSurface,
                     ),
                   ),
-                  Text(
-                    '${_userAnswers.length}/${_questions.length} answered',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: colors.secondary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _unansweredCount == 0
+                          ? Colors.green.withAlpha(26)
+                          : colors.primary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_userAnswers.length}/${_questions.length} answered',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _unansweredCount == 0
+                            ? Colors.green[700]
+                            : colors.primary,
+                      ),
                     ),
                   ),
                 ],
@@ -281,12 +520,43 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
 
                 const SizedBox(height: 24),
 
+                // Keyboard hint
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withAlpha(128),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.outline.withAlpha(77)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.keyboard_outlined,
+                        size: 16,
+                        color: colors.secondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Press 1-4 or A-D to select',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: colors.secondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
                 // Options
                 ...List.generate(question.options.length, (index) {
                   final isSelected = selectedAnswer == index.toString();
-                  final optionLetter = String.fromCharCode(
-                    65 + index,
-                  ); // A, B, C, D
+                  final optionLetter = String.fromCharCode(65 + index);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -416,146 +686,223 @@ The correctAnswer should be the index (0-3) of the correct option. Make question
 
   Widget _buildResults(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final percentage = (_score / _questions.length * 100).round();
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: colors.primary.withAlpha(26),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$percentage%',
-                  style: GoogleFonts.inter(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w700,
-                    color: colors.primary,
-                  ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: colors.primary.withAlpha(26),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '$percentage%',
+                style: GoogleFonts.inter(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: colors.primary,
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Test Complete!',
-              style: GoogleFonts.inter(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: colors.onSurface,
-              ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Test Complete!',
+            style: GoogleFonts.inter(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
             ),
-            const SizedBox(height: 12),
-            Text(
-              'You got $_score out of ${_questions.length} correct',
-              style: GoogleFonts.inter(fontSize: 16, color: colors.secondary),
-            ),
-            const SizedBox(height: 48),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You got $_score out of ${_questions.length} correct',
+            style: GoogleFonts.inter(fontSize: 16, color: colors.secondary),
+          ),
+          const SizedBox(height: 48),
 
-            // Review incorrect answers
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.outline.withAlpha(128)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Review',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: colors.onSurface,
+          // Detailed Review
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 700),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? colors.surface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.outline.withAlpha(128)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      color: colors.primary,
+                      size: 24,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...List.generate(_questions.length, (index) {
-                    final q = _questions[index];
-                    final userAnswer = _userAnswers[index];
-                    final isCorrect =
-                        userAnswer != null &&
-                        int.parse(userAnswer) == q.correctAnswer;
+                    const SizedBox(width: 12),
+                    Text(
+                      'Detailed Review',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                ...List.generate(_questions.length, (index) {
+                  final q = _questions[index];
+                  final userAnswer = _userAnswers[index];
+                  final isCorrect =
+                      userAnswer != null &&
+                      int.parse(userAnswer) == q.correctAnswer;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isCorrect ? Icons.check_circle : Icons.cancel,
-                            color: isCorrect ? Colors.green : Colors.red,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Q${index + 1}: ${q.question.substring(0, q.question.length > 40 ? 40 : q.question.length)}${q.question.length > 40 ? '...' : ''}',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: colors.onSurface,
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isCorrect
+                          ? Colors.green.withAlpha(13)
+                          : Colors.red.withAlpha(13),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isCorrect
+                            ? Colors.green.withAlpha(77)
+                            : Colors.red.withAlpha(77),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: isCorrect
+                                    ? Colors.green.withAlpha(26)
+                                    : Colors.red.withAlpha(26),
+                                shape: BoxShape.circle,
                               ),
+                              child: Icon(
+                                isCorrect ? Icons.check : Icons.close,
+                                color: isCorrect
+                                    ? Colors.green[700]
+                                    : Colors.red[700],
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Question ${index + 1}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          q.question,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: colors.onSurface,
+                            height: 1.4,
+                          ),
+                        ),
+                        if (!isCorrect) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withAlpha(26),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline,
+                                  size: 16,
+                                  color: Colors.green[700],
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Correct: ${q.options[q.correctAnswer]}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: colors.outline.withAlpha(128)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      ],
                     ),
-                    child: Text(
-                      'Back to Set',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _retakeTest,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Retake Test',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
+                  );
+                }),
               ],
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Back to Set'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  side: BorderSide(color: colors.outline.withAlpha(128)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: _retakeTest,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retake Test'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: colors.onPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
