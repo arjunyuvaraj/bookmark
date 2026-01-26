@@ -29,7 +29,7 @@ class _FlashcardSettingScreenState extends State<FlashcardSettingScreen> {
     if (userId == null) return;
 
     final updatedSet = await _setService.getSet(userId, widget.set.id!);
-    if (updatedSet != null) {
+    if (updatedSet != null && mounted) {
       setState(() {
         _currentSet = updatedSet;
       });
@@ -194,68 +194,77 @@ class _FlashcardSettingScreenState extends State<FlashcardSettingScreen> {
             'Edit Card',
             style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600),
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: questionController,
-                  decoration: InputDecoration(
-                    labelText: 'Question',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+          content: SizedBox(
+            width: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  TextField(
+                    controller: questionController,
+                    decoration: InputDecoration(
+                      labelText: 'Question',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: answerController,
+                    decoration: InputDecoration(
+                      labelText: 'Answer',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: tagsController,
+                    decoration: InputDecoration(
+                      labelText: 'Tags (comma separated)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: answerController,
-                  decoration: InputDecoration(
-                    labelText: 'Answer',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Difficulty',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: tagsController,
-                  decoration: InputDecoration(
-                    labelText: 'Tags (comma separated)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<Difficulty>(
+                    segments: const [
+                      ButtonSegment(
+                        value: Difficulty.easy,
+                        label: Text('Easy'),
+                      ),
+                      ButtonSegment(
+                        value: Difficulty.medium,
+                        label: Text('Medium'),
+                      ),
+                      ButtonSegment(
+                        value: Difficulty.hard,
+                        label: Text('Hard'),
+                      ),
+                    ],
+                    selected: {selectedDifficulty},
+                    onSelectionChanged: (Set<Difficulty> selected) {
+                      setDialogState(() {
+                        selectedDifficulty = selected.first;
+                      });
+                    },
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Difficulty',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SegmentedButton<Difficulty>(
-                  segments: const [
-                    ButtonSegment(value: Difficulty.easy, label: Text('Easy')),
-                    ButtonSegment(
-                      value: Difficulty.medium,
-                      label: Text('Medium'),
-                    ),
-                    ButtonSegment(value: Difficulty.hard, label: Text('Hard')),
-                  ],
-                  selected: {selectedDifficulty},
-                  onSelectionChanged: (Set<Difficulty> selected) {
-                    setDialogState(() {
-                      selectedDifficulty = selected.first;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -423,52 +432,25 @@ class _FlashcardSettingScreenState extends State<FlashcardSettingScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Header info
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    border: Border(
-                      bottom: BorderSide(color: colors.outline.withAlpha(128)),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _currentSet.title,
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${_currentSet.cards.length} cards',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: colors.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Cards list
+                // Cards list with max width
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _currentSet.cards.length,
-                    itemBuilder: (context, index) {
-                      final card = _currentSet.cards[index];
-                      return _CardListItem(
-                        card: card,
-                        index: index,
-                        onEdit: () => _showEditCardDialog(card, index),
-                        onDelete: () => _deleteCard(index),
-                      );
-                    },
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _currentSet.cards.length,
+                        itemBuilder: (context, index) {
+                          final card = _currentSet.cards[index];
+                          return _CardListItem(
+                            card: card,
+                            index: index,
+                            onEdit: () => _showEditCardDialog(card, index),
+                            onDelete: () => _deleteCard(index),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ],
