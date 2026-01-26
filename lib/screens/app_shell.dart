@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'home_screen.dart';
-import 'dashboard_screen.dart';
 import 'library_screen.dart';
 import 'upload_screen.dart';
 import 'settings_screen.dart';
@@ -33,11 +32,6 @@ class _AppShellState extends State<AppShell>
       label: 'Chatbot',
     ),
     _NavItem(
-      icon: Icons.dashboard_outlined,
-      selectedIcon: Icons.dashboard_rounded,
-      label: 'Dashboard',
-    ),
-    _NavItem(
       icon: Icons.library_books_outlined,
       selectedIcon: Icons.library_books_rounded,
       label: 'Library',
@@ -57,7 +51,6 @@ class _AppShellState extends State<AppShell>
   final List<Widget> _screens = [
     const HomeScreen(),
     const ChatbotScreen(),
-    const DashboardScreen(),
     const LibraryScreen(),
     const UploadScreen(),
     const SettingsScreen(),

@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bookmark/components/upload_dialog.dart';
+import 'package:bookmark/services/user_stats_service.dart';
+import 'package:bookmark/services/flashcard_service.dart';
+import 'package:bookmark/models/flashcard_model.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  void _showUploadDialog(BuildContext context) {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final UserStatsService _statsService = UserStatsService();
+  final FlashcardSetService _flashcardService = FlashcardSetService();
+
+  void _showUploadDialog(BuildContext context, {bool customMode = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const UploadDialog(),
+      builder: (context) => UploadDialog(startInCustomMode: customMode),
     );
   }
+
+  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   Widget build(BuildContext context) {
@@ -22,70 +35,356 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
+      body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back,',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: colorScheme.onSurface.withAlpha(128),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          displayName,
-                          style: theme.textTheme.headlineLarge,
-                        ),
-                      ],
-                    ),
-                  ),
+              _buildHeader(context, displayName, theme, colorScheme),
+              const SizedBox(height: 48),
+              _buildSectionHeader('QUICK ACTIONS', theme, colorScheme),
+              const SizedBox(height: 16),
+              _buildQuickActions(context, theme, colorScheme),
+              const SizedBox(height: 48),
+              _buildSectionHeader('DASHBOARD', theme, colorScheme),
+              const SizedBox(height: 16),
+              _buildDashboard(context, theme, colorScheme),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  _UploadButton(onPressed: () => _showUploadDialog(context)),
-                ],
-              ),
-
-              const SizedBox(height: 56),
-
+  Widget _buildHeader(BuildContext context, String displayName, ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'QUICK ACTIONS',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurface.withAlpha(102),
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600,
+                'Welcome back,',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withAlpha(128),
                 ),
               ),
-              const SizedBox(height: 20),
-
-              Row(
-                children: [
-                  _QuickActionCard(
-                    icon: Icons.upload_file_outlined,
-                    title: 'Upload',
-                    subtitle: 'Add new study content',
-                    onTap: () => _showUploadDialog(context),
-                  ),
-                  const SizedBox(width: 16),
-                  _QuickActionCard(
-                    icon: Icons.library_books_outlined,
-                    title: 'Library',
-                    subtitle: 'View your study sets',
-                    onTap: () {},
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                displayName,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
+                ),
               ),
             ],
+          ),
+        ),
+        _CreateNewButton(
+          onUpload: () => _showUploadDialog(context),
+          onCustom: () => _showUploadDialog(context, customMode: true),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, ThemeData theme, ColorScheme colorScheme) {
+    return Text(
+      title,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: colorScheme.onSurface.withAlpha(102),
+        letterSpacing: 1.2,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context, ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.style_outlined,
+            title: 'Study Flashcards',
+            subtitle: 'Review your sets',
+            onTap: () {},
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.quiz_outlined,
+            title: 'Take a Quiz',
+            subtitle: 'Test your knowledge',
+            onTap: () {},
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.chat_outlined,
+            title: 'AI Tutor',
+            subtitle: 'Ask questions',
+            onTap: () {},
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.library_books_outlined,
+            title: 'Library',
+            subtitle: 'View all sets',
+            onTap: () {},
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDashboard(BuildContext context, ThemeData theme, ColorScheme colorScheme) {
+    if (_userId == null) {
+      return _buildEmptyState(theme, colorScheme);
+    }
+
+    return Column(
+      children: [
+        // Stats Row - streams real data
+        StreamBuilder<UserStats>(
+          stream: _statsService.streamUserStats(_userId!),
+          builder: (context, statsSnapshot) {
+            final stats = statsSnapshot.data ?? UserStats();
+
+            return StreamBuilder<List<SetModel>>(
+              stream: _flashcardService.streamUserSets(_userId!),
+              builder: (context, setsSnapshot) {
+                final sets = setsSnapshot.data ?? [];
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        value: '${stats.currentStreak}',
+                        label: 'Day Streak',
+                        icon: Icons.local_fire_department_outlined,
+                        theme: theme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _StatCard(
+                        value: '${stats.totalCardsStudied}',
+                        label: 'Cards Studied',
+                        icon: Icons.style_outlined,
+                        theme: theme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _StatCard(
+                        value: '${sets.length}',
+                        label: 'Study Sets',
+                        icon: Icons.folder_outlined,
+                        theme: theme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _StatCard(
+                        value: '${stats.accuracy.round()}%',
+                        label: 'Accuracy',
+                        icon: Icons.check_circle_outline,
+                        theme: theme,
+                        colorScheme: colorScheme,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        // Recent Activity and Study Goals
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _RecentActivityCard(
+                userId: _userId!,
+                statsService: _statsService,
+                theme: theme,
+                colorScheme: colorScheme,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: StreamBuilder<UserStats>(
+                stream: _statsService.streamUserStats(_userId!),
+                builder: (context, snapshot) {
+                  final stats = snapshot.data ?? UserStats();
+                  return _StudyGoalsCard(
+                    stats: stats,
+                    theme: theme,
+                    colorScheme: colorScheme,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.all(48),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.login_outlined,
+              size: 48,
+              color: colorScheme.onSurface.withAlpha(102),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sign in to track your progress',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface.withAlpha(153),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateNewButton extends StatefulWidget {
+  final VoidCallback onUpload;
+  final VoidCallback onCustom;
+
+  const _CreateNewButton({required this.onUpload, required this.onCustom});
+
+  @override
+  State<_CreateNewButton> createState() => _CreateNewButtonState();
+}
+
+class _CreateNewButtonState extends State<_CreateNewButton> {
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  bool _isOpen = false;
+
+  void _toggleDropdown() {
+    if (_isOpen) {
+      _closeDropdown();
+    } else {
+      _openDropdown();
+    }
+  }
+
+  void _openDropdown() {
+    final overlay = Overlay.of(context);
+    final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _closeDropdown,
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          Positioned(
+            width: 220,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: Offset(size.width - 220, size.height + 8),
+              child: _DropdownMenu(
+                onUpload: () {
+                  _closeDropdown();
+                  widget.onUpload();
+                },
+                onCustom: () {
+                  _closeDropdown();
+                  widget.onCustom();
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+    setState(() => _isOpen = true);
+  }
+
+  void _closeDropdown() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    setState(() => _isOpen = false);
+  }
+
+  @override
+  void dispose() {
+    _closeDropdown();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: FilledButton.icon(
+        onPressed: _toggleDropdown,
+        icon: const Icon(Icons.add, size: 18),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Create New'),
+            const SizedBox(width: 4),
+            Icon(
+              _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              size: 18,
+            ),
+          ],
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
       ),
@@ -93,48 +392,11 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _UploadButton extends StatelessWidget {
-  final VoidCallback onPressed;
+class _DropdownMenu extends StatelessWidget {
+  final VoidCallback onUpload;
+  final VoidCallback onCustom;
 
-  const _UploadButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.add, size: 18),
-      label: const Text('New'),
-      style: FilledButton.styleFrom(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        minimumSize: const Size(0, 48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _QuickActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+  const _DropdownMenu({required this.onUpload, required this.onCustom});
 
   @override
   Widget build(BuildContext context) {
@@ -143,53 +405,514 @@ class _QuickActionCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        hoverColor: colorScheme.onSurface.withAlpha(13),
-        child: Container(
-          width: 200,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? colorScheme.surface : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: colorScheme.outline,
-              width: 1,
+      elevation: 8,
+      shadowColor: Colors.black.withAlpha(30),
+      borderRadius: BorderRadius.circular(8),
+      color: isDark ? colorScheme.surface : Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outline.withAlpha(50)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _DropdownItem(
+              icon: Icons.upload_outlined,
+              title: 'Upload Content',
+              subtitle: 'Files, links, and text',
+              onTap: onUpload,
+              theme: theme,
+              colorScheme: colorScheme,
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            Divider(height: 1, color: colorScheme.outline.withAlpha(50)),
+            _DropdownItem(
+              icon: Icons.edit_outlined,
+              title: 'Custom Creation',
+              subtitle: 'Build from scratch',
+              onTap: onCustom,
+              theme: theme,
+              colorScheme: colorScheme,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownItem extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _DropdownItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  State<_DropdownItem> createState() => _DropdownItemState();
+}
+
+class _DropdownItemState extends State<_DropdownItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          color: _isHovered ? widget.colorScheme.onSurface.withAlpha(8) : Colors.transparent,
+          child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withAlpha(20),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withAlpha(128),
+              Icon(widget.icon, size: 20, color: widget.colorScheme.onSurface.withAlpha(153)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: widget.theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      widget.subtitle,
+                      style: widget.theme.textTheme.bodySmall?.copyWith(
+                        color: widget.colorScheme.onSurface.withAlpha(102),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _QuickActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  State<_QuickActionCard> createState() => _QuickActionCardState();
+}
+
+class _QuickActionCardState extends State<_QuickActionCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.theme.brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 120,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? widget.colorScheme.surface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.colorScheme.onSurface.withAlpha(50)
+                  : widget.colorScheme.outline.withAlpha(80),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                widget.icon,
+                size: 24,
+                color: widget.colorScheme.onSurface.withAlpha(153),
+              ),
+              const Spacer(),
+              Text(
+                widget.title,
+                style: widget.theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                widget.subtitle,
+                style: widget.theme.textTheme.bodySmall?.copyWith(
+                  color: widget.colorScheme.onSurface.withAlpha(102),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData icon;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _StatCard({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: colorScheme.onSurface.withAlpha(102)),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withAlpha(102),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentActivityCard extends StatelessWidget {
+  final String userId;
+  final UserStatsService statsService;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _RecentActivityCard({
+    required this.userId,
+    required this.statsService,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 280,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recent Activity',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: StreamBuilder<List<ActivityItem>>(
+              stream: statsService.streamRecentActivity(userId, limit: 5),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.onSurface.withAlpha(102),
+                      ),
+                    ),
+                  );
+                }
+
+                final activities = snapshot.data ?? [];
+
+                if (activities.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.history_outlined,
+                          size: 32,
+                          color: colorScheme.onSurface.withAlpha(60),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No recent activity',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withAlpha(102),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: activities.length,
+                  itemBuilder: (context, index) {
+                    final activity = activities[index];
+                    return _ActivityItemWidget(
+                      activity: activity,
+                      theme: theme,
+                      colorScheme: colorScheme,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityItemWidget extends StatelessWidget {
+  final ActivityItem activity;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _ActivityItemWidget({
+    required this.activity,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'study':
+        return Icons.style_outlined;
+      case 'quiz':
+        return Icons.check_circle_outline;
+      case 'created':
+        return Icons.add_circle_outline;
+      default:
+        return Icons.circle_outlined;
+    }
+  }
+
+  String _formatTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final diff = now.difference(timestamp);
+
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${timestamp.month}/${timestamp.day}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(
+            _getIconForType(activity.type),
+            size: 18,
+            color: colorScheme.onSurface.withAlpha(102),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              activity.title,
+              style: theme.textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            _formatTime(activity.timestamp),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withAlpha(102),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudyGoalsCard extends StatelessWidget {
+  final UserStats stats;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _StudyGoalsCard({
+    required this.stats,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 280,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Study Goals',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _GoalProgress(
+            label: 'Daily Cards',
+            current: stats.cardsStudiedToday,
+            target: stats.dailyGoalCards,
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 16),
+          _GoalProgress(
+            label: 'Weekly Sessions',
+            current: stats.sessionsThisWeek,
+            target: stats.weeklyGoalSessions,
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+          const SizedBox(height: 16),
+          _GoalProgress(
+            label: 'Monthly Quizzes',
+            current: stats.quizzesThisMonth,
+            target: stats.monthlyGoalQuizzes,
+            theme: theme,
+            colorScheme: colorScheme,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalProgress extends StatelessWidget {
+  final String label;
+  final int current;
+  final int target;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _GoalProgress({
+    required this.label,
+    required this.current,
+    required this.target,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withAlpha(153),
+              ),
+            ),
+            Text(
+              '$current / $target',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: progress,
+          backgroundColor: colorScheme.onSurface.withAlpha(20),
+          valueColor: AlwaysStoppedAnimation<Color>(
+            colorScheme.onSurface.withAlpha(153),
+          ),
+          minHeight: 4,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ],
     );
   }
 }

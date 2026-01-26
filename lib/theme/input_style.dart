@@ -44,5 +44,5 @@ InputDecorationTheme darkInputTheme = InputDecorationTheme(
   ),
 );
 
-// Legacy export for backwards compatibility
+
 InputDecorationTheme inputTheme = lightInputTheme;
