@@ -27,7 +27,11 @@ class LibraryScreen extends StatelessWidget {
             itemCount: sets.length,
             itemBuilder: (BuildContext context, int index) {
               final SetModel set = sets[index];
-              return FlashcardSetCard(set: set.toJson());
+              return FlashcardSetCard(
+                set: set.toJson(),
+                setModel: set,
+                userId: currentUid,
+              );
             },
           );
         } else if (snapshot.hasError) {
@@ -42,7 +46,137 @@ class LibraryScreen extends StatelessWidget {
 
 class FlashcardSetCard extends StatelessWidget {
   final Map<String, dynamic> set;
-  const FlashcardSetCard({super.key, required this.set});
+  final SetModel setModel;
+  final String userId;
+
+  const FlashcardSetCard({
+    super.key,
+    required this.set,
+    required this.setModel,
+    required this.userId,
+  });
+
+  void _showEditDialog(BuildContext context) {
+    final titleController = TextEditingController(text: setModel.title);
+    final descriptionController = TextEditingController(
+      text: setModel.description,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Set'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (titleController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title cannot be empty')),
+                );
+                return;
+              }
+
+              final updatedSet = setModel.copyWith(
+                title: titleController.text.trim(),
+                description: descriptionController.text.trim(),
+              );
+
+              final success = await FlashcardSetService().updateSet(
+                userId,
+                setModel.id!,
+                updatedSet,
+              );
+
+              if (context.mounted) {
+                Navigator.pop(context);
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Set updated successfully')),
+                  );
+                  // Refresh the screen
+                  (context as Element).markNeedsBuild();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to update set')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Set'),
+        content: Text(
+          'Are you sure you want to delete "${setModel.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final success = await FlashcardSetService().deleteSet(
+                userId,
+                setModel.id!,
+                fileUrl: setModel.fileUrl,
+              );
+
+              if (context.mounted) {
+                Navigator.pop(context);
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Set deleted successfully')),
+                  );
+                  // Refresh the screen
+                  (context as Element).markNeedsBuild();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to delete set')),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,22 +216,61 @@ class FlashcardSetCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withAlpha(26),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$cardCount cards',
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withAlpha(26),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$cardCount cards',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _showEditDialog(context);
+                          } else if (value == 'delete') {
+                            _showDeleteDialog(context);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),

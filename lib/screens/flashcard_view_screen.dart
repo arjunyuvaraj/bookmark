@@ -1,7 +1,8 @@
 import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/screens/flashcard_setting_screen.dart';
 import 'package:bookmark/screens/test_screen.dart';
-import 'package:bookmark/screens/settings_screen.dart';
+import 'package:bookmark/services/flashcard_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +26,8 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
   bool isFlipped = false;
   StudyMode currentMode = StudyMode.flashcards;
   bool isMenuOpen = false;
+  bool showCongrats = false;
+  bool hasIncrementedSession = false;
 
   late AnimationController _flipController;
   late AnimationController _progressController;
@@ -96,6 +99,18 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     });
   }
 
+  Future<void> _incrementSessionCount() async {
+    if (!hasIncrementedSession && widget.set.id != null) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        await FlashcardSetService().incrementSessions(userId, widget.set.id!);
+        setState(() {
+          hasIncrementedSession = true;
+        });
+      }
+    }
+  }
+
   void _nextCard() {
     if (currentIndex < widget.set.cards.length - 1) {
       setState(() {
@@ -103,6 +118,12 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
         isFlipped = false;
         _flipController.reset();
         _updateProgress((currentIndex + 1) / widget.set.cards.length);
+      });
+    } else {
+      // User finished all cards, show congrats screen
+      _incrementSessionCount();
+      setState(() {
+        showCongrats = true;
       });
     }
   }
@@ -161,6 +182,17 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
     );
   }
 
+  void _restartStudySession() {
+    setState(() {
+      currentIndex = 0;
+      isFlipped = false;
+      showCongrats = false;
+      hasIncrementedSession = false;
+      _flipController.reset();
+      _updateProgress(1 / widget.set.cards.length);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final cards = widget.set.cards;
@@ -170,7 +202,7 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
       focusNode: FocusNode()..requestFocus(),
       autofocus: true,
       onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent) {
+        if (event is KeyDownEvent && !showCongrats) {
           if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             _nextCard();
           } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
@@ -187,7 +219,11 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
             Column(
               children: [
                 _buildHeader(context),
-                Expanded(child: _buildMainContent(context, cards)),
+                Expanded(
+                  child: showCongrats
+                      ? _buildCongratsScreen(context)
+                      : _buildMainContent(context, cards),
+                ),
               ],
             ),
             if (isMenuOpen)
@@ -198,6 +234,92 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                 ),
               ),
             _buildMenu(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCongratsScreen(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colors.primary.withAlpha(26),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.celebration_outlined,
+                size: 80,
+                color: colors.primary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Congratulations!',
+              style: GoogleFonts.inter(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'You\'ve completed all ${widget.set.cards.length} flashcards!',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                color: colors.onSurface.withAlpha(180),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 48),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _restartStudySession,
+                  icon: const Icon(Icons.refresh, size: 20),
+                  label: const Text('Study Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: colors.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                  label: const Text('Back to Library'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.onSurface,
+                    side: BorderSide(color: colors.outline.withAlpha(128)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -249,7 +371,9 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${currentIndex + 1} of ${cards.length} cards',
+                          showCongrats
+                              ? 'Completed!'
+                              : '${currentIndex + 1} of ${cards.length} cards',
                           style: GoogleFonts.inter(
                             color: colors.secondary,
                             fontSize: 12,
@@ -258,14 +382,15 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: _toggleMenu,
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: colors.onSurface,
-                      size: 22,
+                  if (!showCongrats)
+                    IconButton(
+                      onPressed: _toggleMenu,
+                      icon: Icon(
+                        Icons.more_vert,
+                        color: colors.onSurface,
+                        size: 22,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -279,7 +404,7 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(
-                      value: _progressAnimation.value,
+                      value: showCongrats ? 1.0 : _progressAnimation.value,
                       backgroundColor: colors.outline.withAlpha(77),
                       valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
                       minHeight: 4,
@@ -456,8 +581,8 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
               const SizedBox(width: 16),
               _NavigationButton(
                 icon: Icons.arrow_forward_ios,
-                onPressed: currentIndex < cards.length - 1 ? _nextCard : null,
-                label: 'Next',
+                onPressed: _nextCard,
+                label: currentIndex < cards.length - 1 ? 'Next' : 'Finish',
                 isPrimary: true,
               ),
             ],
