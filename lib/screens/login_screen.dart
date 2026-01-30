@@ -2,7 +2,9 @@ import 'package:bookmark/components/custom_primary_button.dart';
 import 'package:bookmark/components/custom_text_field.dart';
 import 'package:bookmark/components/google_sign_in_button.dart';
 import 'package:bookmark/services/authentication_service.dart';
+import 'package:bookmark/theme/color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final logoColor = isDark ? darkTextPrimary : lightTextPrimary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -42,8 +46,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/app-icon.png', width: 32, height: 32),
-                      const SizedBox(width: 14),
+                      SvgPicture.asset(
+                        'assets/bookmark-logo.svg',
+                        width: 28,
+                        height: 28,
+                        colorFilter: ColorFilter.mode(logoColor, BlendMode.srcIn),
+                      ),
+                      const SizedBox(width: 12),
                       Text('bookmark', style: theme.textTheme.headlineLarge),
                     ],
                   ),

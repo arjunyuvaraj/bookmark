@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const double _buttonRadius = 6.0;
 const Color _primaryBlue = Color(0xFF2383E2);
@@ -129,8 +130,13 @@ class _LandingScreenState extends State<LandingScreen> with TickerProviderStateM
             children: [
               Row(
                 children: [
-                  Image.asset('assets/app-icon.png', width: 28, height: 28),
-                  const SizedBox(width: 12),
+                  SvgPicture.asset(
+                    'assets/bookmark-logo.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(_textPrimary, BlendMode.srcIn),
+                  ),
+                  const SizedBox(width: 10),
                   Text(
                     'bookmark',
                     style: GoogleFonts.inter(
@@ -615,7 +621,12 @@ class _LandingScreenState extends State<LandingScreen> with TickerProviderStateM
                   children: [
                     Row(
                       children: [
-                        Image.asset('assets/app-icon.png', width: 32, height: 32),
+                        SvgPicture.asset(
+                          'assets/bookmark-logo.svg',
+                          width: 28,
+                          height: 28,
+                          colorFilter: const ColorFilter.mode(_textPrimary, BlendMode.srcIn),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           'bookmark',

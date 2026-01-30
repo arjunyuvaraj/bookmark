@@ -1,8 +1,9 @@
-import 'package:bookmark/models/flashcard_model.dart';
-import 'package:bookmark/screens/flashcard_view_screen.dart';
-import 'package:bookmark/services/flashcard_service.dart';
+import 'package:bookmark/models/note_model.dart';
+import 'package:bookmark/screens/note_view_screen.dart';
+import 'package:bookmark/services/notes_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -14,44 +15,107 @@ class LibraryScreen extends StatelessWidget {
       return const Center(child: Text("Please Login"));
     }
     String currentUid = currentUser.uid;
-    return FutureBuilder(
-      future: FlashcardSetService().getUserSets(currentUid),
+
+    return StreamBuilder<List<NoteModel>>(
+      stream: NotesService().streamUserNotes(currentUid),
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          final sets = snapshot.data!;
-          if (sets.isEmpty) {
-            return const Center(child: Text("No flashcard sets yet"));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: sets.length,
-            itemBuilder: (BuildContext context, int index) {
-              final SetModel set = sets[index];
-              return FlashcardSetCard(set: set.toJson());
-            },
-          );
-        } else if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
-        } else {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        final notes = snapshot.data ?? [];
+
+        if (notes.isEmpty) {
+          return _buildEmptyState(context);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: notes.length,
+          itemBuilder: (BuildContext context, int index) {
+            final NoteModel note = notes[index];
+            return NoteCard(note: note);
+          },
+        );
       },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedNote,
+            size: 48,
+            color: colorScheme.onSurface.withAlpha(102),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No notes yet',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurface.withAlpha(153),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Upload content to generate study notes',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface.withAlpha(102),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class FlashcardSetCard extends StatelessWidget {
-  final Map<String, dynamic> set;
-  const FlashcardSetCard({super.key, required this.set});
+class NoteCard extends StatelessWidget {
+  final NoteModel note;
+  const NoteCard({super.key, required this.note});
+
+  dynamic _getSourceIcon(SourceType type) {
+    switch (type) {
+      case SourceType.pdf:
+        return HugeIcons.strokeRoundedPdf01;
+      case SourceType.image:
+        return HugeIcons.strokeRoundedImage01;
+      case SourceType.video:
+        return HugeIcons.strokeRoundedPlayCircle;
+      case SourceType.url:
+        return HugeIcons.strokeRoundedLink01;
+      case SourceType.text:
+        return HugeIcons.strokeRoundedTextFont;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays == 0) {
+      return 'Today';
+    } else if (diff.inDays == 1) {
+      return 'Yesterday';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final title = set['title'] ?? 'Untitled Set';
-    final description = set['description'] ?? '';
-    final cardCount = (set['cards'] as List?)?.length ?? 0;
-    final sessions = set['sessions'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -60,8 +124,7 @@ class FlashcardSetCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  FlashcardPracticeScreen(set: SetModel.fromJson(set)),
+              builder: (context) => NoteViewScreen(note: note),
             ),
           );
         },
@@ -76,7 +139,7 @@ class FlashcardSetCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      title,
+                      note.title,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -92,37 +155,27 @@ class FlashcardSetCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '$cardCount cards',
+                      note.subject,
                       style: TextStyle(
                         color: colorScheme.primary,
                         fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
                     ),
                   ),
                 ],
               ),
-              if (description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withAlpha(153),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(
-                    Icons.history,
+                  HugeIcon(
+                    icon: _getSourceIcon(note.sourceType),
                     size: 16,
                     color: colorScheme.onSurface.withAlpha(153),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 8),
                   Text(
-                    '$sessions sessions',
+                    _formatDate(note.createdAt),
                     style: TextStyle(
                       color: colorScheme.onSurface.withAlpha(153),
                       fontSize: 14,

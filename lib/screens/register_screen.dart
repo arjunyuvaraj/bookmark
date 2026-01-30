@@ -3,7 +3,9 @@ import 'package:bookmark/components/custom_text_field.dart';
 import 'package:bookmark/components/google_sign_in_button.dart';
 import 'package:bookmark/services/authentication_service.dart';
 import 'package:bookmark/utilities/helper_functions.dart';
+import 'package:bookmark/theme/color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const double _cardRadius = 8.0;
 
@@ -34,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final logoColor = isDark ? darkTextPrimary : lightTextPrimary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -57,8 +60,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset('assets/app-icon.png', width: 24, height: 24),
-                        const SizedBox(width: 16),
+                        SvgPicture.asset(
+                          'assets/bookmark-logo.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: ColorFilter.mode(logoColor, BlendMode.srcIn),
+                        ),
+                        const SizedBox(width: 14),
                         Text('bookmark', style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.5)),
                       ],
                     ),
