@@ -6,7 +6,6 @@ import 'package:bookmark/theme/color_scheme.dart';
 
 import 'home_screen.dart';
 import 'library_screen.dart';
-import 'upload_screen.dart';
 import 'settings_screen.dart';
 import 'chatbot_screen.dart';
 
@@ -31,16 +30,13 @@ class _AppShellState extends State<AppShell>
       label: 'Home',
     ),
     _NavItem(
-      icon: HugeIcons.strokeRoundedBubbleChat,
-      label: 'Chatbot',
+      icon: null, // Uses custom SVG
+      label: 'Mark',
+      isMark: true,
     ),
     _NavItem(
       icon: HugeIcons.strokeRoundedLibrary,
       label: 'Library',
-    ),
-    _NavItem(
-      icon: HugeIcons.strokeRoundedCloudUpload,
-      label: 'Quick Upload',
     ),
     _NavItem(
       icon: HugeIcons.strokeRoundedUser,
@@ -52,7 +48,6 @@ class _AppShellState extends State<AppShell>
     const HomeScreen(),
     const ChatbotScreen(),
     const LibraryScreen(),
-    const UploadScreen(),
     const SettingsScreen(),
   ];
 
@@ -240,11 +235,19 @@ class _AppShellState extends State<AppShell>
             ),
             child: Row(
               children: [
-                HugeIcon(
-                  icon: item.icon,
-                  color: textColor,
-                  size: 20,
-                ),
+                if (item.isMark)
+                  SvgPicture.asset(
+                    'assets/mark-icon.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
+                  )
+                else
+                  HugeIcon(
+                    icon: item.icon,
+                    color: textColor,
+                    size: 20,
+                  ),
                 const SizedBox(width: 12),
                 Text(
                   item.label,
@@ -265,9 +268,11 @@ class _AppShellState extends State<AppShell>
 class _NavItem {
   final dynamic icon;
   final String label;
+  final bool isMark;
 
   _NavItem({
     required this.icon,
     required this.label,
+    this.isMark = false,
   });
 }

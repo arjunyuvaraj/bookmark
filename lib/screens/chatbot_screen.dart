@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bookmark/services/chat_service.dart';
@@ -567,6 +568,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Widget _buildWelcomeScreen(bool isDark) {
     final textColor = isDark ? darkTextPrimary : lightTextPrimary;
+    final subtitleColor = isDark ? darkTextSecondary : lightTextSecondary;
 
     return Center(
       child: Padding(
@@ -574,12 +576,31 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Mark icon
+            SvgPicture.asset(
+              'assets/mark-icon.svg',
+              width: 80,
+              height: 80,
+              colorFilter: ColorFilter.mode(
+                isDark ? darkTextSecondary : lightTextSecondary,
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(height: 20),
             Text(
-              'Ask anything',
+              'Hey, I\'m Mark',
               style: TextStyle(
                 color: textColor,
                 fontSize: 28,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your personal study assistant',
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 15,
               ),
             ),
             const SizedBox(height: 32),
@@ -787,7 +808,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       TextField(
                         controller: _messageController,
                         decoration: InputDecoration(
-                          hintText: 'Ask anything',
+                          hintText: 'Hey, Ask anything',
                           border: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -845,23 +866,25 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                             GestureDetector(
                               onTap: (_isLoading || isOverLimit || !hasText) ? null : () => _sendMessage(),
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 28,
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: (hasText && !isOverLimit)
                                       ? (isDark ? darkTextPrimary : lightTextPrimary)
                                       : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(6),
                                   border: (hasText && !isOverLimit)
                                       ? null
                                       : Border.all(color: borderColor, width: 1),
                                 ),
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedArrowUp01,
-                                  color: (hasText && !isOverLimit)
-                                      ? (isDark ? darkBackground : lightBackground)
-                                      : iconColor,
-                                  size: 18,
+                                child: Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedArrowUp02,
+                                    color: (hasText && !isOverLimit)
+                                        ? (isDark ? darkBackground : lightBackground)
+                                        : iconColor,
+                                    size: 14,
+                                  ),
                                 ),
                               ),
                             ),

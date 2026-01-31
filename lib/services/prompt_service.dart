@@ -3,202 +3,69 @@ import 'package:firebase_ai/firebase_ai.dart';
 
 /// Prompt for generating notes from content
 const String _notesPrompt = '''
-You are an expert note-taker specializing in creating comprehensive, well-structured study notes from educational content.
+You are an expert note-taker creating comprehensive, engaging study notes.
 
-TASK: Analyze the provided content (document, image, or video transcript) and create detailed study notes that capture all important information in an organized, learnable format.
+TASK: Create detailed study notes from the provided content in an organized, learnable format.
 
-NOTE-TAKING STRATEGY:
+OUTPUT: Return ONLY a valid JSON object (no markdown fences):
 
-1. Structure: Organize notes with clear hierarchy using headings and subheadings. Group related concepts together logically.
+{"title": "Topic title", "subject": "Subject area", "notes": "Markdown notes content"}
 
-2. Completeness: Capture all key concepts, definitions, facts, processes, examples, and applications. Include important details, but omit filler content and redundancy.
+NOTES FORMAT:
+- Use ## for sections, ### for subsections
+- Use **bold** for key terms, - for bullets
+- Use emojis: 📌 definitions, 💡 insights, ⚠️ warnings, ✨ facts, 📝 examples, 🧮 formulas
 
-3. Clarity: Write in clear, concise language. Define technical terms. Use bullet points for lists and steps. Emphasize critical information.
+MATH (use LaTeX):
+- Inline: \$x^2 + y = z\$
+- Block: \$\$\\frac{a}{b}\$\$
+- Use \\frac, \\sqrt, \\sum, \\int, ^{}, _{} for math notation
 
-4. Learning-Focused: Present information in a way that facilitates understanding and retention. Connect related ideas. Highlight cause-effect relationships. Include examples that illustrate concepts.
+CODE: Use fenced blocks with language (```python)
 
-OUTPUT FORMAT:
+QUALITY: Cover all concepts, 500-2000 words, clear organization.
 
-Return ONLY valid JSON with this exact structure:
-
-{
-  "title": "Concise title describing the content topic",
-  "subject": "Primary subject area (e.g., Biology, History, Mathematics, Computer Science)",
-  "notes": "Complete markdown-formatted notes with headings, bullet points, and emphasis. Use ## for main sections, ### for subsections, **bold** for key terms, - for bullets, and numbered lists where appropriate."
-}
-
-NOTES FORMATTING RULES:
-
-Use markdown syntax: ## for main topics, ### for subtopics, **bold** for important terms and concepts, - for bullet points, 1. 2. 3. for ordered lists or steps, > for important quotes or key takeaways, ` for code or formulas if present.
-
-Structure guidelines: Start with a brief overview if the content has one. Organize by major topics and subtopics. Use parallel structure in lists. Keep paragraphs focused on single ideas. Include examples under relevant concepts.
-
-Content guidelines: Define all technical terminology. Include numerical data, dates, and statistics. Capture step-by-step processes completely. Note relationships between concepts. Include context where it aids understanding.
-
-CONTENT-SPECIFIC INSTRUCTIONS:
-
-For documents (PDF/text): Extract information in the order presented unless reorganization improves clarity. Capture all headings and section structures. Include information from tables, charts, and figures. Note any formulas, equations, or special notation.
-
-For images: Transcribe all visible text accurately. Describe diagrams with labels and relationships. Extract data from charts and graphs. Explain visual processes step-by-step. Note color coding or symbolic meanings.
-
-For videos: Focus on teaching content, not meta-commentary. Organize by topics discussed, not chronologically. Capture definitions and explanations. Include examples and demonstrations. Note any recommended resources.
-
-QUALITY STANDARDS:
-
-Notes should be 500-2000 words depending on content richness. All major concepts must be covered. Information must be accurate and complete. Organization must be logical and clear. Formatting must enhance readability.
-
-OUTPUT RULES:
-
-Output ONLY the JSON object. No markdown code fences, no extra text. Use double quotes throughout. Escape special characters properly (quotes become \\", newlines become \\n). The notes field contains a single string with markdown formatting.
-
-Now analyze the content and generate comprehensive study notes.
+JSON RULES: Escape quotes as \\" and newlines as \\n in the notes string.
 ''';
 
 /// Prompt for generating flashcards from notes
 const String _flashcardsFromNotesPrompt = '''
-You are an expert at creating effective flashcards from study notes that promote active recall and spaced repetition.
+Create flashcards from the provided study notes.
 
-TASK: Convert the provided study notes into high-quality flashcards optimized for learning and retention.
+OUTPUT: Return ONLY valid JSON (no markdown fences):
 
-FLASHCARD CREATION PRINCIPLES:
+{"cards": [{"question": "Question text", "answer": "Answer text", "tags": ["tag1", "tag2"], "difficulty": "easy"}]}
 
-1. One Concept Per Card: Each flashcard tests a single, specific piece of knowledge.
-
-2. Question Quality: Use clear, unambiguous questions. Avoid yes/no questions. Focus on understanding, not just memorization. Vary question types (what, how, why, when, compare, apply).
-
-3. Answer Quality: Provide complete, self-contained answers. Include enough context to be meaningful. Keep answers concise but comprehensive.
-
-4. Coverage: Create flashcards for all important concepts in the notes. Include definitions, processes, comparisons, applications, and examples. Distribute difficulty appropriately.
-
-OUTPUT FORMAT:
-
-Return ONLY valid JSON with this exact structure:
-
-{
-  "cards": [
-    {
-      "question": "Clear, specific question",
-      "answer": "Complete, concise answer",
-      "tags": ["tag1", "tag2", "tag3"],
-      "difficulty": "easy, medium, or hard"
-    }
-  ]
-}
-
-FLASHCARD TYPES TO CREATE:
-
-Definition cards: "What is [term]?" "Define [concept]."
-
-Explanation cards: "Explain how [process] works." "What is the purpose of [concept]?"
-
-Application cards: "How would you use [concept] in [context]?" "When should you apply [method]?"
-
-Comparison cards: "What's the difference between [A] and [B]?" "Compare [concept A] and [concept B]."
-
-Process cards: "What are the steps to [process]?" "Describe the procedure for [task]."
-
-Example cards: "Give an example of [concept]." "What illustrates [principle]?"
-
-Cause-effect cards: "What causes [phenomenon]?" "What is the result of [action]?"
-
-FIELD SPECIFICATIONS:
-
-question: 10-150 characters. Must be specific and unambiguous. Test one concept only.
-
-answer: 30-300 characters. Must be complete and accurate. Include necessary context.
-
-tags: 2-4 relevant keywords. Lowercase. Related to subject and specific topics.
-
-difficulty: Exactly "easy", "medium", or "hard". Easy = basic recall, Medium = understanding/application, Hard = analysis/synthesis. Distribute as 40% easy, 40% medium, 20% hard.
-
-QUANTITY GUIDELINES:
-
-Generate 15-25 flashcards depending on notes length and complexity. Ensure comprehensive coverage of all major topics. Don't create redundant cards. Focus on testable, important information.
-
-QUALITY RULES:
-
-Every major concept from notes must have at least one card. Questions must be clear and answerable from the notes. Answers must be accurate and derived from the notes. Tags must reflect actual note content. Difficulty ratings must be appropriate.
-
-OUTPUT RULES:
-
-Output ONLY the JSON object. No markdown fences, no extra text. Use double quotes. Escape special characters. Difficulty must be exactly "easy", "medium", or "hard". Tags must be an array of strings.
-
-Now convert the study notes into flashcards.
+RULES:
+- One concept per card
+- Clear questions (what, how, why, compare)
+- Complete, concise answers
+- Use emojis sparingly: 📌 📝 💡 🧮
+- For math, use LaTeX: \$x^2\$ or \$\$\\frac{a}{b}\$\$
+- difficulty: exactly "easy", "medium", or "hard"
+- tags: 2-4 lowercase keywords
+- Generate 15-25 cards covering all major concepts
+- Escape quotes as \\" in JSON strings
 ''';
 
 /// Prompt for generating quiz from notes
 const String _quizFromNotesPrompt = '''
-You are an expert at creating effective practice quizzes that test comprehension and reinforce learning.
+Create a multiple-choice quiz from the provided study notes.
 
-TASK: Convert the provided study notes into a practice quiz with multiple-choice questions that assess understanding of the material.
+OUTPUT: Return ONLY valid JSON (no markdown fences):
 
-QUIZ DESIGN PRINCIPLES:
+{"questions": [{"question": "Question text", "options": ["A", "B", "C", "D"], "correctAnswer": 0, "explanation": "Why correct", "difficulty": "medium"}]}
 
-1. Test Understanding: Questions should assess comprehension, not just memorization. Include application, analysis, and comparison questions.
-
-2. Quality Distractors: Wrong answers should be plausible but clearly incorrect. Use common misconceptions or partial truths. Avoid obviously wrong or silly options.
-
-3. Clear Questions: Each question must be unambiguous and have one clearly correct answer. Avoid "all of the above" or "none of the above" unless necessary.
-
-4. Comprehensive Coverage: Quiz should cover all major topics from the notes. Balance between different difficulty levels.
-
-OUTPUT FORMAT:
-
-Return ONLY valid JSON with this exact structure:
-
-{
-  "questions": [
-    {
-      "question": "Clear, specific question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": 0,
-      "explanation": "Brief explanation of why the answer is correct",
-      "difficulty": "easy, medium, or hard"
-    }
-  ]
-}
-
-QUESTION TYPES TO INCLUDE:
-
-Recall questions: Test knowledge of definitions, facts, and key concepts.
-
-Comprehension questions: Test understanding of explanations and processes.
-
-Application questions: Test ability to use knowledge in scenarios.
-
-Analysis questions: Test ability to break down concepts or compare/contrast.
-
-Inference questions: Test ability to draw conclusions from information.
-
-FIELD SPECIFICATIONS:
-
-question: Clear, complete question (20-200 characters). Must be answerable from the notes.
-
-options: Array of exactly 4 answer choices. Each 5-100 characters. One correct, three plausible distractors. Parallel structure and similar length.
-
-correctAnswer: Index of correct option (0, 1, 2, or 3). 0 = first option, 1 = second, etc.
-
-explanation: 30-150 characters. Briefly explain why the correct answer is right or what makes it the best choice. Reference key concept from notes.
-
-difficulty: Exactly "easy", "medium", or "hard". Easy = straightforward recall, Medium = understanding/application, Hard = complex analysis. Distribute as 30% easy, 50% medium, 20% hard.
-
-DISTRACTOR CREATION:
-
-Make wrong answers believable and tempting. Use related but incorrect concepts. Include common errors or misconceptions. Ensure distractors are clearly wrong to someone who knows the material. Avoid obviously absurd or joke answers.
-
-QUANTITY AND COVERAGE:
-
-Generate 10-20 questions depending on notes length. Cover all major topics proportionally. Don't cluster too many questions on one topic. Mix difficulty levels throughout the quiz.
-
-QUALITY STANDARDS:
-
-Every question must be clear and unambiguous. Every question must have exactly one correct answer. Correct answers must be verifiable from the notes. Distractors must be plausible. Explanations must be helpful and accurate. Difficulty ratings must be appropriate.
-
-OUTPUT RULES:
-
-Output ONLY the JSON object. No markdown fences, no extra text. Use double quotes throughout. Escape special characters properly. correctAnswer must be 0, 1, 2, or 3. Difficulty must be exactly "easy", "medium", or "hard". Options must be an array of exactly 4 strings.
-
-Now convert the study notes into a practice quiz.
+RULES:
+- Clear questions testing understanding
+- Exactly 4 options per question
+- correctAnswer: 0, 1, 2, or 3 (index of correct option)
+- Plausible distractors (wrong answers)
+- Brief explanation with 💡 or ✅
+- difficulty: exactly "easy", "medium", or "hard"
+- For math, use LaTeX: \$x^2\$ or \$\$\\frac{a}{b}\$\$
+- Generate 10-20 questions covering all topics
+- Escape quotes as \\" in JSON strings
 ''';
 
 class PromptService {

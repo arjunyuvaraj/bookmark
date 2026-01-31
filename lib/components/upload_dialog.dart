@@ -249,6 +249,8 @@ class _UploadDialogState extends State<UploadDialog> {
 
   String _cleanJsonResponse(String response) {
     String cleaned = response.trim();
+
+    // Remove markdown code fences
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.substring(7);
     } else if (cleaned.startsWith('```')) {
@@ -257,7 +259,250 @@ class _UploadDialogState extends State<UploadDialog> {
     if (cleaned.endsWith('```')) {
       cleaned = cleaned.substring(0, cleaned.length - 3);
     }
+    cleaned = cleaned.trim();
+
+    // Try to find JSON object if there's extra text
+    final jsonStart = cleaned.indexOf('{');
+    final jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    }
+
+    // Try parsing as-is first
+    try {
+      jsonDecode(cleaned);
+      return cleaned.trim();
+    } catch (_) {
+      // Continue with repair
+    }
+
+    // Fix common JSON issues from AI responses
+    cleaned = _fixJsonString(cleaned);
+
+    // Try parsing after fix
+    try {
+      jsonDecode(cleaned);
+      return cleaned.trim();
+    } catch (_) {
+      // Try more aggressive repair
+    }
+
+    // Last resort: extract fields manually using regex
+    cleaned = _extractAndRebuildJson(response);
+
     return cleaned.trim();
+  }
+
+  String _fixJsonString(String json) {
+    final buffer = StringBuffer();
+    bool inString = false;
+    bool escaped = false;
+
+    for (int i = 0; i < json.length; i++) {
+      final char = json[i];
+      final codeUnit = char.codeUnitAt(0);
+
+      if (escaped) {
+        // Check if it's a valid escape sequence
+        if ('"\\/bfnrtu'.contains(char)) {
+          buffer.write(char);
+        } else {
+          // Invalid escape - escape the backslash and write the char
+          buffer.write('\\');
+          buffer.write(char);
+        }
+        escaped = false;
+        continue;
+      }
+
+      if (char == '\\') {
+        escaped = true;
+        buffer.write(char);
+        continue;
+      }
+
+      if (char == '"') {
+        inString = !inString;
+        buffer.write(char);
+        continue;
+      }
+
+      if (inString) {
+        // Handle problematic characters inside strings
+        if (char == '\n') {
+          buffer.write('\\n');
+          continue;
+        }
+        if (char == '\r') {
+          continue; // Skip carriage returns
+        }
+        if (char == '\t') {
+          buffer.write('\\t');
+          continue;
+        }
+        // Handle other control characters (ASCII 0-31)
+        if (codeUnit < 32) {
+          buffer.write('\\u${codeUnit.toRadixString(16).padLeft(4, '0')}');
+          continue;
+        }
+      }
+
+      buffer.write(char);
+    }
+
+    return buffer.toString();
+  }
+
+  /// Extract JSON fields manually when parsing fails
+  String _extractAndRebuildJson(String response) {
+    // Try to extract title, subject, and notes fields
+    String? title;
+    String? subject;
+    String? notes;
+
+    // Extract title
+    final titleMatch = RegExp(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)?"', dotAll: true).firstMatch(response);
+    if (titleMatch != null) {
+      title = titleMatch.group(1) ?? 'Untitled';
+    }
+
+    // Extract subject
+    final subjectMatch = RegExp(r'"subject"\s*:\s*"((?:[^"\\]|\\.)*)?"', dotAll: true).firstMatch(response);
+    if (subjectMatch != null) {
+      subject = subjectMatch.group(1) ?? 'General';
+    }
+
+    // Extract notes - this is trickier since it's usually the longest field
+    // Find the start of notes field
+    final notesStartMatch = RegExp(r'"notes"\s*:\s*"').firstMatch(response);
+    if (notesStartMatch != null) {
+      final notesStart = notesStartMatch.end;
+      // Find the end by looking for the closing pattern
+      // We need to find the last unescaped quote before the closing brace
+      int endPos = notesStart;
+      bool inEscape = false;
+
+      for (int i = notesStart; i < response.length; i++) {
+        final char = response[i];
+
+        if (inEscape) {
+          inEscape = false;
+          continue;
+        }
+
+        if (char == '\\') {
+          inEscape = true;
+          continue;
+        }
+
+        if (char == '"') {
+          // Check if this looks like the end of notes field
+          final remaining = response.substring(i + 1).trimLeft();
+          if (remaining.startsWith('}') || remaining.startsWith(',')) {
+            endPos = i;
+            break;
+          }
+        }
+      }
+
+      if (endPos > notesStart) {
+        notes = response.substring(notesStart, endPos);
+      }
+    }
+
+    // Build clean JSON
+    title ??= 'Untitled Notes';
+    subject ??= 'General';
+    notes ??= 'Failed to extract notes content.';
+
+    // Decode escape sequences before re-escaping
+    // This ensures \n becomes actual newline, then gets properly escaped
+    title = _decodeEscapeSequences(title);
+    subject = _decodeEscapeSequences(subject);
+    notes = _decodeEscapeSequences(notes);
+
+    // Escape the extracted values properly
+    title = _escapeJsonValue(title);
+    subject = _escapeJsonValue(subject);
+    notes = _escapeJsonValue(notes);
+
+    return '{"title":"$title","subject":"$subject","notes":"$notes"}';
+  }
+
+  /// Decode common escape sequences to actual characters
+  String _decodeEscapeSequences(String input) {
+    final buffer = StringBuffer();
+    int i = 0;
+
+    while (i < input.length) {
+      if (input[i] == '\\' && i + 1 < input.length) {
+        final nextChar = input[i + 1];
+        switch (nextChar) {
+          case 'n':
+            buffer.write('\n');
+            i += 2;
+            break;
+          case 't':
+            buffer.write('\t');
+            i += 2;
+            break;
+          case 'r':
+            buffer.write('\r');
+            i += 2;
+            break;
+          case '"':
+            buffer.write('"');
+            i += 2;
+            break;
+          case '\\':
+            buffer.write('\\');
+            i += 2;
+            break;
+          default:
+            buffer.write(input[i]);
+            i++;
+        }
+      } else {
+        buffer.write(input[i]);
+        i++;
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  /// Properly escape a string for JSON
+  String _escapeJsonValue(String value) {
+    final buffer = StringBuffer();
+    for (int i = 0; i < value.length; i++) {
+      final char = value[i];
+      final codeUnit = char.codeUnitAt(0);
+
+      switch (char) {
+        case '"':
+          buffer.write('\\"');
+          break;
+        case '\\':
+          buffer.write('\\\\');
+          break;
+        case '\n':
+          buffer.write('\\n');
+          break;
+        case '\r':
+          buffer.write('\\r');
+          break;
+        case '\t':
+          buffer.write('\\t');
+          break;
+        default:
+          if (codeUnit < 32) {
+            buffer.write('\\u${codeUnit.toRadixString(16).padLeft(4, '0')}');
+          } else {
+            buffer.write(char);
+          }
+      }
+    }
+    return buffer.toString();
   }
 
   Future<void> _saveToFirebase(String jsonResult) async {

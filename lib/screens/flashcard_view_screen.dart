@@ -1,11 +1,9 @@
 import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/screens/flashcard_setting_screen.dart';
 import 'package:bookmark/screens/test_screen.dart';
-import 'package:bookmark/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
 
 enum StudyMode { flashcards, test }
 
@@ -32,10 +30,13 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
   late Animation<double> _flipAnimation;
   late Animation<double> _progressAnimation;
   late Animation<Offset> _menuSlideAnimation;
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+
+    _focusNode = FocusNode();
 
     _flipController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -65,12 +66,20 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _menuController, curve: Curves.easeOut));
 
-    // Initialize progress
-    _updateProgress((currentIndex + 1) / widget.set.cards.length);
+    // Initialize progress (guard against empty cards)
+    if (widget.set.cards.isNotEmpty) {
+      _updateProgress((currentIndex + 1) / widget.set.cards.length);
+    }
+
+    // Request focus after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _flipController.dispose();
     _progressController.dispose();
     _menuController.dispose();
@@ -165,20 +174,64 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
   Widget build(BuildContext context) {
     final cards = widget.set.cards;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
 
-    return KeyboardListener(
-      focusNode: FocusNode()..requestFocus(),
+    // Handle empty cards case
+    if (cards.isEmpty) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: colors.surface,
+          elevation: 0,
+          leading: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(Icons.arrow_back, color: colors.onSurface),
+          ),
+          title: Text(
+            widget.set.title,
+            style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.style_outlined,
+                size: 64,
+                color: colors.onSurface.withAlpha(100),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No flashcards available',
+                style: TextStyle(
+                  color: colors.onSurface.withAlpha(150),
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Focus(
+      focusNode: _focusNode,
       autofocus: true,
-      onKeyEvent: (KeyEvent event) {
+      onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             _nextCard();
+            return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
             _previousCard();
+            return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.space) {
             _flipCard();
+            return KeyEventResult.handled;
           }
         }
+        return KeyEventResult.ignored;
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,

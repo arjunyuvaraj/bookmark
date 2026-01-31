@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 const Color accentBlue = Color(0xFF2383E2);
-const Color primaryBlue = accentBlue;
+const Color primaryBlue = Color(0xFF2383E2);
 
 // DARK THEME COLORS - Softer, warmer palette for better aesthetics
 const Color darkBackground = Color(0xFF191919);
