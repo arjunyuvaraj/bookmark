@@ -4,6 +4,7 @@ import 'package:bookmark/services/authentication_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -200,7 +201,7 @@ class _ThemeToggle extends StatelessWidget {
               Expanded(
                 child: _ThemeOption(
                   label: 'Light',
-                  icon: Icons.light_mode_outlined,
+                  icon: HugeIcons.strokeRoundedSun03,
                   isSelected: !isDark,
                   onTap: () => themeProvider?.setThemeMode(ThemeMode.light),
                 ),
@@ -208,7 +209,7 @@ class _ThemeToggle extends StatelessWidget {
               Expanded(
                 child: _ThemeOption(
                   label: 'Dark',
-                  icon: Icons.dark_mode_outlined,
+                  icon: HugeIcons.strokeRoundedMoon02,
                   isSelected: isDark,
                   onTap: () => themeProvider?.setThemeMode(ThemeMode.dark),
                 ),
@@ -223,7 +224,7 @@ class _ThemeToggle extends StatelessWidget {
 
 class _ThemeOption extends StatelessWidget {
   final String label;
-  final IconData icon;
+  final dynamic icon;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -253,8 +254,8 @@ class _ThemeOption extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
+            HugeIcon(
+              icon: icon,
               size: 20,
               color: isSelected
                   ? colorScheme.primary

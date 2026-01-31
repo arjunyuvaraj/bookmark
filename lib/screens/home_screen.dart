@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bookmark/components/upload_dialog.dart';
 import 'package:bookmark/services/user_stats_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';
 import 'package:bookmark/models/flashcard_model.dart';
+import 'package:bookmark/theme/color_scheme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.style_outlined,
+            icon: HugeIcons.strokeRoundedCards01,
             title: 'Study Flashcards',
             subtitle: 'Review your sets',
             onTap: () {},
@@ -118,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.quiz_outlined,
+            icon: HugeIcons.strokeRoundedQuiz02,
             title: 'Take a Quiz',
             subtitle: 'Test your knowledge',
             onTap: () {},
@@ -129,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.chat_outlined,
+            icon: HugeIcons.strokeRoundedBubbleChat,
             title: 'AI Tutor',
             subtitle: 'Ask questions',
             onTap: () {},
@@ -140,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.library_books_outlined,
+            icon: HugeIcons.strokeRoundedLibrary,
             title: 'Library',
             subtitle: 'View all sets',
             onTap: () {},
@@ -176,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _StatCard(
                         value: '${stats.currentStreak}',
                         label: 'Day Streak',
-                        icon: Icons.local_fire_department_outlined,
+                        icon: HugeIcons.strokeRoundedFire,
                         theme: theme,
                         colorScheme: colorScheme,
                       ),
@@ -186,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _StatCard(
                         value: '${stats.totalCardsStudied}',
                         label: 'Cards Studied',
-                        icon: Icons.style_outlined,
+                        icon: HugeIcons.strokeRoundedCards01,
                         theme: theme,
                         colorScheme: colorScheme,
                       ),
@@ -196,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _StatCard(
                         value: '${sets.length}',
                         label: 'Study Sets',
-                        icon: Icons.folder_outlined,
+                        icon: HugeIcons.strokeRoundedFolder01,
                         theme: theme,
                         colorScheme: colorScheme,
                       ),
@@ -206,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _StatCard(
                         value: '${stats.accuracy.round()}%',
                         label: 'Accuracy',
-                        icon: Icons.check_circle_outline,
+                        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                         theme: theme,
                         colorScheme: colorScheme,
                       ),
@@ -263,8 +265,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Center(
         child: Column(
           children: [
-            Icon(
-              Icons.login_outlined,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedLogin01,
               size: 48,
               color: colorScheme.onSurface.withAlpha(102),
             ),
@@ -364,20 +366,8 @@ class _CreateNewButtonState extends State<_CreateNewButton> {
 
     return CompositedTransformTarget(
       link: _layerLink,
-      child: FilledButton.icon(
+      child: FilledButton(
         onPressed: _toggleDropdown,
-        icon: const Icon(Icons.add, size: 18),
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Create New'),
-            const SizedBox(width: 4),
-            Icon(
-              _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: 18,
-            ),
-          ],
-        ),
         style: FilledButton.styleFrom(
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
@@ -386,6 +376,24 @@ class _CreateNewButtonState extends State<_CreateNewButton> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
           ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedAdd01,
+              size: 18,
+              color: colorScheme.onPrimary,
+            ),
+            const SizedBox(width: 8),
+            const Text('Create New'),
+            const SizedBox(width: 4),
+            HugeIcon(
+              icon: _isOpen ? HugeIcons.strokeRoundedArrowUp01 : HugeIcons.strokeRoundedArrowDown01,
+              size: 18,
+              color: colorScheme.onPrimary,
+            ),
+          ],
         ),
       ),
     );
@@ -418,7 +426,7 @@ class _DropdownMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _DropdownItem(
-              icon: Icons.upload_outlined,
+              icon: HugeIcons.strokeRoundedCloudUpload,
               title: 'Upload Content',
               subtitle: 'Files, links, and text',
               onTap: onUpload,
@@ -427,7 +435,7 @@ class _DropdownMenu extends StatelessWidget {
             ),
             Divider(height: 1, color: colorScheme.outline.withAlpha(50)),
             _DropdownItem(
-              icon: Icons.edit_outlined,
+              icon: HugeIcons.strokeRoundedPencilEdit01,
               title: 'Custom Creation',
               subtitle: 'Build from scratch',
               onTap: onCustom,
@@ -442,7 +450,7 @@ class _DropdownMenu extends StatelessWidget {
 }
 
 class _DropdownItem extends StatefulWidget {
-  final IconData icon;
+  final dynamic icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -477,7 +485,7 @@ class _DropdownItemState extends State<_DropdownItem> {
           color: _isHovered ? widget.colorScheme.onSurface.withAlpha(8) : Colors.transparent,
           child: Row(
             children: [
-              Icon(widget.icon, size: 20, color: widget.colorScheme.onSurface.withAlpha(153)),
+              HugeIcon(icon: widget.icon, size: 20, color: widget.colorScheme.onSurface.withAlpha(153)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -507,7 +515,7 @@ class _DropdownItemState extends State<_DropdownItem> {
 }
 
 class _QuickActionCard extends StatefulWidget {
-  final IconData icon;
+  final dynamic icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -555,8 +563,8 @@ class _QuickActionCardState extends State<_QuickActionCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                widget.icon,
+              HugeIcon(
+                icon: widget.icon,
                 size: 24,
                 color: widget.colorScheme.onSurface.withAlpha(153),
               ),
@@ -585,7 +593,7 @@ class _QuickActionCardState extends State<_QuickActionCard> {
 class _StatCard extends StatelessWidget {
   final String value;
   final String label;
-  final IconData icon;
+  final dynamic icon;
   final ThemeData theme;
   final ColorScheme colorScheme;
 
@@ -611,7 +619,7 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: colorScheme.onSurface.withAlpha(102)),
+          HugeIcon(icon: icon, size: 24, color: colorScheme.onSurface.withAlpha(102)),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,8 +705,8 @@ class _RecentActivityCard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.history_outlined,
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedClock01,
                           size: 32,
                           color: colorScheme.onSurface.withAlpha(60),
                         ),
@@ -745,16 +753,16 @@ class _ActivityItemWidget extends StatelessWidget {
     required this.colorScheme,
   });
 
-  IconData _getIconForType(String type) {
+  dynamic _getIconForType(String type) {
     switch (type) {
       case 'study':
-        return Icons.style_outlined;
+        return HugeIcons.strokeRoundedCards01;
       case 'quiz':
-        return Icons.check_circle_outline;
+        return HugeIcons.strokeRoundedCheckmarkCircle02;
       case 'created':
-        return Icons.add_circle_outline;
+        return HugeIcons.strokeRoundedAddCircle;
       default:
-        return Icons.circle_outlined;
+        return HugeIcons.strokeRoundedCircle;
     }
   }
 
@@ -776,8 +784,8 @@ class _ActivityItemWidget extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Icon(
-            _getIconForType(activity.type),
+          HugeIcon(
+            icon: _getIconForType(activity.type),
             size: 18,
             color: colorScheme.onSurface.withAlpha(102),
           ),

@@ -1,5 +1,3 @@
-// ignore_for_file: unused_field
-
 import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/services/authentication_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';

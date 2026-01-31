@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bookmark/services/chat_service.dart';
 import 'package:bookmark/services/chat_history_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';
@@ -19,6 +20,7 @@ class ChatbotScreen extends StatefulWidget {
 }
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
@@ -335,21 +337,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
   }
 
-  void _showAttachmentSheet() {
+  void _showAttachmentDialog() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: isDark ? darkSurface : lightSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-      ),
-      builder: (context) => _AttachmentSheet(
-        isDark: isDark,
-        onStudySetSelected: (set) {
-          Navigator.pop(context);
-          _addStudySetAttachment(set);
-        },
-        flashcardService: _flashcardService,
+      builder: (context) => Dialog(
+        backgroundColor: isDark ? darkSurface : lightSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
+          child: _AttachmentDialog(
+            isDark: isDark,
+            onStudySetSelected: (set) {
+              Navigator.pop(context);
+              _addStudySetAttachment(set);
+            },
+            flashcardService: _flashcardService,
+          ),
+        ),
       ),
     );
   }
@@ -385,6 +392,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     final bgColor = isDark ? darkBackground : lightBackground;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: bgColor,
       endDrawer: _userId != null ? _buildHistoryDrawer(isDark) : null,
       body: Column(
@@ -436,7 +444,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       Navigator.pop(context);
                       _startNewChat();
                     },
-                    icon: Icon(Icons.add, color: subtitleColor, size: 20),
+                    icon: HugeIcon(icon: HugeIcons.strokeRoundedAdd01, color: subtitleColor, size: 20),
                     tooltip: 'New chat',
                     style: IconButton.styleFrom(
                       backgroundColor: surfaceColor,
@@ -463,8 +471,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedBubbleChat,
                                 size: 32,
                                 color: subtitleColor,
                               ),
@@ -535,8 +543,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           if (_messages.isNotEmpty)
             IconButton(
               onPressed: _startNewChat,
-              icon: Icon(
-                Icons.add,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedAdd01,
                 color: subtitleColor,
                 size: 20,
               ),
@@ -544,9 +552,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             ),
           if (_userId != null)
             IconButton(
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-              icon: Icon(
-                Icons.menu,
+              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedMenu01,
                 color: subtitleColor,
                 size: 20,
               ),
@@ -654,10 +662,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        a.type == AttachmentType.studySet
-                            ? Icons.style_outlined
-                            : Icons.attach_file,
+                      HugeIcon(
+                        icon: a.type == AttachmentType.studySet
+                            ? HugeIcons.strokeRoundedCards01
+                            : HugeIcons.strokeRoundedAttachment01,
                         size: 14,
                         color: subtitleColor,
                       ),
@@ -808,8 +816,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           children: [
                             // Left side - action buttons
                             IconButton(
-                              onPressed: _showAttachmentSheet,
-                              icon: Icon(Icons.add, color: iconColor, size: 20),
+                              onPressed: _showAttachmentDialog,
+                              icon: HugeIcon(icon: HugeIcons.strokeRoundedAdd01, color: iconColor, size: 20),
                               tooltip: 'Add attachment',
                               padding: const EdgeInsets.all(8),
                               constraints: const BoxConstraints(),
@@ -848,8 +856,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                                       ? null
                                       : Border.all(color: borderColor, width: 1),
                                 ),
-                                child: Icon(
-                                  Icons.arrow_upward_rounded,
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedArrowUp01,
                                   color: (hasText && !isOverLimit)
                                       ? (isDark ? darkBackground : lightBackground)
                                       : iconColor,
@@ -933,8 +941,8 @@ class _ChatHistoryTile extends StatelessWidget {
             ),
             IconButton(
               onPressed: onDelete,
-              icon: Icon(
-                Icons.delete_outline,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedDelete02,
                 size: 16,
                 color: subtitleColor,
               ),
@@ -1211,13 +1219,13 @@ class _LatexPart {
   _LatexPart(this.content, this.isLatex, this.isBlock);
 }
 
-// Attachment sheet
-class _AttachmentSheet extends StatelessWidget {
+// Attachment dialog
+class _AttachmentDialog extends StatelessWidget {
   final bool isDark;
   final Function(SetModel) onStudySetSelected;
   final FlashcardSetService flashcardService;
 
-  const _AttachmentSheet({
+  const _AttachmentDialog({
     required this.isDark,
     required this.onStudySetSelected,
     required this.flashcardService,
@@ -1227,23 +1235,37 @@ class _AttachmentSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final textColor = isDark ? darkTextPrimary : lightTextPrimary;
     final subtitleColor = isDark ? darkTextSecondary : lightTextSecondary;
+    final borderColor = isDark ? darkBorder : lightBorder;
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Add to chat',
-            style: TextStyle(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Text(
+                'Add to chat',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: subtitleColor, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          Divider(height: 1, color: borderColor),
+          const SizedBox(height: 16),
           Text(
             'STUDY SETS',
             style: TextStyle(
@@ -1265,8 +1287,7 @@ class _AttachmentSheet extends StatelessWidget {
               ),
             )
           else
-            SizedBox(
-              height: 200,
+            Expanded(
               child: FutureBuilder<List<SetModel>>(
                 future: flashcardService.getUserSets(userId),
                 builder: (context, snapshot) {
@@ -1303,7 +1324,6 @@ class _AttachmentSheet extends StatelessWidget {
                 },
               ),
             ),
-          const SizedBox(height: 16),
         ],
       ),
     );
@@ -1341,8 +1361,8 @@ class _StudySetTile extends StatelessWidget {
                 color: surfaceColor,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(
-                Icons.style_outlined,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedCards01,
                 size: 18,
                 color: subtitleColor,
               ),
@@ -1372,8 +1392,8 @@ class _StudySetTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
-              Icons.add,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedAdd01,
               size: 18,
               color: subtitleColor,
             ),
@@ -1412,10 +1432,10 @@ class _AttachmentChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            attachment.type == AttachmentType.studySet
-                ? Icons.style_outlined
-                : Icons.attach_file,
+          HugeIcon(
+            icon: attachment.type == AttachmentType.studySet
+                ? HugeIcons.strokeRoundedCards01
+                : HugeIcons.strokeRoundedAttachment01,
             size: 14,
             color: subtitleColor,
           ),
@@ -1430,8 +1450,8 @@ class _AttachmentChip extends StatelessWidget {
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onRemove,
-            child: Icon(
-              Icons.close,
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedCancel01,
               size: 16,
               color: subtitleColor,
             ),

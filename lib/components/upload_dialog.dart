@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart' as picker;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bookmark/services/prompt_service.dart';
-import 'package:bookmark/services/flashcard_service.dart';
-import 'package:bookmark/models/flashcard_model.dart';
+import 'package:bookmark/services/notes_service.dart';
+import 'package:bookmark/models/note_model.dart';
 
 const double _cardRadius = 8.0;
 
@@ -25,24 +26,25 @@ class UploadDialog extends StatefulWidget {
 
 class _UploadDialogState extends State<UploadDialog> {
   final PromptService _promptService = PromptService();
-  final FlashcardSetService _flashcardService = FlashcardSetService();
+  final NotesService _notesService = NotesService();
   final TextEditingController _textController = TextEditingController();
 
   bool _isCustomMode = false;
   bool _isLoading = false;
   String? _error;
   bool _isSaved = false;
-  int _cardCount = 0;
-  String _setTitle = '';
+  String _noteTitle = '';
+  String _noteSubject = '';
 
   // Combined content
   final List<_UploadedFile> _uploadedFiles = [];
   final List<String> _links = [];
   final TextEditingController _linkInputController = TextEditingController();
 
-  // Custom mode
+  // Custom mode - for creating notes manually
   final TextEditingController _customTitleController = TextEditingController();
-  final List<_CustomCard> _customCards = [_CustomCard()];
+  final TextEditingController _customSubjectController = TextEditingController();
+  final TextEditingController _customNotesController = TextEditingController();
 
   @override
   void initState() {
@@ -55,6 +57,8 @@ class _UploadDialogState extends State<UploadDialog> {
     _textController.dispose();
     _linkInputController.dispose();
     _customTitleController.dispose();
+    _customSubjectController.dispose();
+    _customNotesController.dispose();
     super.dispose();
   }
 
@@ -123,6 +127,20 @@ class _UploadDialogState extends State<UploadDialog> {
     setState(() => _uploadedFiles.removeAt(index));
   }
 
+  SourceType _determineSourceType() {
+    if (_uploadedFiles.isNotEmpty) {
+      final mimeType = _uploadedFiles.first.mimeType;
+      if (mimeType == 'application/pdf') return SourceType.pdf;
+      if (mimeType.startsWith('image/')) return SourceType.image;
+      return SourceType.text;
+    }
+    if (_links.isNotEmpty) {
+      if (_promptService.isYouTubeUrl(_links.first)) return SourceType.video;
+      return SourceType.url;
+    }
+    return SourceType.text;
+  }
+
   Future<void> _processContent() async {
     setState(() {
       _isLoading = true;
@@ -132,61 +150,49 @@ class _UploadDialogState extends State<UploadDialog> {
     try {
       String result;
 
-      // Combine all content
-      List<String> allContent = [];
-
       // Process files
       if (_uploadedFiles.isNotEmpty) {
         if (_uploadedFiles.length == 1) {
           final file = _uploadedFiles.first;
           if (file.mimeType == 'application/pdf') {
-            result = await _promptService.generateFromPdf(file.bytes);
-            allContent.add(result);
+            result = await _promptService.generateNotesFromPdf(file.bytes);
           } else if (file.mimeType.startsWith('image/')) {
-            result = await _promptService.generateFromImage(file.bytes, file.mimeType);
-            allContent.add(result);
+            result = await _promptService.generateNotesFromImage(file.bytes, file.mimeType);
           } else if (file.mimeType == 'text/plain') {
             final text = String.fromCharCodes(file.bytes);
-            allContent.add('File content: $text');
+            result = await _promptService.generateNotesFromText(text);
+          } else {
+            throw Exception('Unsupported file type');
           }
         } else {
           final fileInputs = _uploadedFiles
               .map((f) => FileInput(bytes: f.bytes, mimeType: f.mimeType, fileName: f.name))
               .toList();
-          result = await _promptService.generateFromMultipleFiles(fileInputs);
-          allContent.add(result);
+          result = await _promptService.generateNotesFromMultipleFiles(fileInputs);
         }
       }
-
       // Process links
-      for (final link in _links) {
+      else if (_links.isNotEmpty) {
+        final link = _links.first;
         if (_promptService.isYouTubeUrl(link)) {
-          result = await _promptService.generateFromYouTube(link);
+          result = await _promptService.generateNotesFromYouTube(link);
         } else {
-          result = await _promptService.generateFromUrl(link);
+          result = await _promptService.generateNotesFromUrl(link);
         }
-        allContent.add(result);
       }
-
       // Process text
-      if (_textController.text.trim().isNotEmpty) {
-        result = await _promptService.generateFromText(_textController.text.trim());
-        allContent.add(result);
-      }
-
-      if (allContent.isEmpty) {
+      else if (_textController.text.trim().isNotEmpty) {
+        result = await _promptService.generateNotesFromText(_textController.text.trim());
+      } else {
         throw Exception('Please add at least one file, link, or text content.');
       }
 
-      // Use the first valid result (most content already generates complete JSON)
-      final cleanResult = _cleanJsonResponse(allContent.first);
-      final setData = await _saveToFirebase(cleanResult);
+      final cleanResult = _cleanJsonResponse(result);
+      await _saveToFirebase(cleanResult);
 
       setState(() {
         _isLoading = false;
         _isSaved = true;
-        _cardCount = setData['cardCount'] as int;
-        _setTitle = setData['title'] as String;
       });
     } catch (e) {
       setState(() {
@@ -196,19 +202,14 @@ class _UploadDialogState extends State<UploadDialog> {
     }
   }
 
-  Future<void> _saveCustomSet() async {
+  Future<void> _saveCustomNotes() async {
     if (_customTitleController.text.trim().isEmpty) {
       setState(() => _error = 'Please enter a title');
       return;
     }
 
-    final validCards = _customCards.where((c) =>
-      c.frontController.text.trim().isNotEmpty &&
-      c.backController.text.trim().isNotEmpty
-    ).toList();
-
-    if (validCards.isEmpty) {
-      setState(() => _error = 'Please add at least one complete flashcard');
+    if (_customNotesController.text.trim().isEmpty) {
+      setState(() => _error = 'Please enter some notes content');
       return;
     }
 
@@ -221,25 +222,22 @@ class _UploadDialogState extends State<UploadDialog> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      final cards = validCards.map((c) => Flashcard(
-        question: c.frontController.text.trim(),
-        answer: c.backController.text.trim(),
-      )).toList();
-
-      final set = SetModel(
+      final note = NoteModel(
         title: _customTitleController.text.trim(),
-        description: 'Custom flashcard set',
-        fileType: FileType.none,
-        cards: cards,
+        subject: _customSubjectController.text.trim().isNotEmpty
+            ? _customSubjectController.text.trim()
+            : 'General',
+        notes: _customNotesController.text.trim(),
+        sourceType: SourceType.text,
       );
 
-      await _flashcardService.createSet(user.uid, set);
+      await _notesService.createNote(user.uid, note);
 
       setState(() {
         _isLoading = false;
         _isSaved = true;
-        _cardCount = cards.length;
-        _setTitle = _customTitleController.text.trim();
+        _noteTitle = note.title;
+        _noteSubject = note.subject;
       });
     } catch (e) {
       setState(() {
@@ -262,39 +260,29 @@ class _UploadDialogState extends State<UploadDialog> {
     return cleaned.trim();
   }
 
-  Future<Map<String, dynamic>> _saveToFirebase(String jsonResult) async {
+  Future<void> _saveToFirebase(String jsonResult) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
     final jsonData = jsonDecode(jsonResult) as Map<String, dynamic>;
 
-    final cards = (jsonData['cards'] as List?)
-            ?.map((card) => Flashcard.fromJson(card as Map<String, dynamic>))
-            .toList() ?? [];
+    final title = jsonData['title'] as String? ?? 'Untitled Notes';
+    final subject = jsonData['subject'] as String? ?? 'General';
+    final notes = jsonData['notes'] as String? ?? '';
 
-    FileType fileType = FileType.none;
-    final fileTypeStr = jsonData['fileType'] as String?;
-    if (fileTypeStr != null) {
-      try {
-        fileType = FileType.values.firstWhere(
-          (e) => e.name == fileTypeStr,
-          orElse: () => FileType.none,
-        );
-      } catch (_) {
-        fileType = FileType.none;
-      }
-    }
-
-    final title = jsonData['title'] as String? ?? 'Untitled Set';
-    final set = SetModel(
+    final note = NoteModel(
       title: title,
-      description: jsonData['description'] as String? ?? '',
-      fileType: fileType,
-      cards: cards,
+      subject: subject,
+      notes: notes,
+      sourceType: _determineSourceType(),
     );
 
-    await _flashcardService.createSet(user.uid, set);
-    return {'cardCount': cards.length, 'title': title};
+    await _notesService.createNote(user.uid, note);
+
+    setState(() {
+      _noteTitle = title;
+      _noteSubject = subject;
+    });
   }
 
   void _clearAll() {
@@ -304,22 +292,12 @@ class _UploadDialogState extends State<UploadDialog> {
       _linkInputController.clear();
       _textController.clear();
       _customTitleController.clear();
-      _customCards.clear();
-      _customCards.add(_CustomCard());
+      _customSubjectController.clear();
+      _customNotesController.clear();
       _error = null;
       _isSaved = false;
       _isCustomMode = widget.startInCustomMode;
     });
-  }
-
-  void _addCustomCard() {
-    setState(() => _customCards.add(_CustomCard()));
-  }
-
-  void _removeCustomCard(int index) {
-    if (_customCards.length > 1) {
-      setState(() => _customCards.removeAt(index));
-    }
   }
 
   bool _canGenerate() {
@@ -366,14 +344,14 @@ class _UploadDialogState extends State<UploadDialog> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close, color: colorScheme.onSurface.withAlpha(153)),
+                icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: colorScheme.onSurface.withAlpha(153), size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Add files, links, and text to generate flashcards',
+            'Add files, links, or text to generate study notes',
             style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withAlpha(128)),
           ),
           const SizedBox(height: 24),
@@ -428,7 +406,7 @@ class _UploadDialogState extends State<UploadDialog> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
               child: Text(
-                'Generate Flashcards',
+                'Generate Notes',
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: _canGenerate() ? colorScheme.onPrimary : colorScheme.onSurface.withAlpha(102),
                 ),
@@ -451,19 +429,19 @@ class _UploadDialogState extends State<UploadDialog> {
             children: [
               Expanded(
                 child: Text(
-                  'Custom Creation',
+                  'Create Notes',
                   style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close, color: colorScheme.onSurface.withAlpha(153)),
+                icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: colorScheme.onSurface.withAlpha(153), size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Create your own flashcards from scratch',
+            'Write your own study notes from scratch',
             style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withAlpha(128)),
           ),
           const SizedBox(height: 24),
@@ -474,96 +452,48 @@ class _UploadDialogState extends State<UploadDialog> {
           ],
 
           // Title
-          Text('Set Title', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500)),
+          Text('Title', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           TextField(
             controller: _customTitleController,
             style: theme.textTheme.bodyMedium,
-            decoration: _inputDecoration('Enter a title for your set', colorScheme, isDark),
+            decoration: _inputDecoration('Enter a title for your notes', colorScheme, isDark),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Cards
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Flashcards (${_customCards.length})',
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _addCustomCard,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Card'),
-                style: TextButton.styleFrom(
-                  foregroundColor: colorScheme.primary,
-                ),
-              ),
-            ],
+          // Subject
+          Text('Subject', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _customSubjectController,
+            style: theme.textTheme.bodyMedium,
+            decoration: _inputDecoration('e.g., Biology, History, Math', colorScheme, isDark),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          ..._customCards.asMap().entries.map((e) =>
-            _buildCustomCardItem(e.key, e.value, theme, colorScheme, isDark)),
-
+          // Notes Content
+          Text('Notes', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _customNotesController,
+            style: theme.textTheme.bodyMedium,
+            maxLines: 10,
+            decoration: _inputDecoration('Write your notes here... (Markdown supported)', colorScheme, isDark),
+          ),
           const SizedBox(height: 24),
 
           // Save Button
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _saveCustomSet,
+              onPressed: _saveCustomNotes,
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
-              child: Text('Save Flashcard Set', style: theme.textTheme.labelLarge),
+              child: Text('Save Notes', style: theme.textTheme.labelLarge),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomCardItem(int index, _CustomCard card, ThemeData theme, ColorScheme colorScheme, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? colorScheme.surface : colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(_cardRadius),
-        border: Border.all(color: colorScheme.outline.withAlpha(50)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('Card ${index + 1}', style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onSurface.withAlpha(102))),
-              const Spacer(),
-              if (_customCards.length > 1)
-                IconButton(
-                  icon: Icon(Icons.close, size: 18, color: colorScheme.onSurface.withAlpha(102)),
-                  onPressed: () => _removeCustomCard(index),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: card.frontController,
-            style: theme.textTheme.bodyMedium,
-            decoration: _inputDecoration('Front (term or question)', colorScheme, isDark),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: card.backController,
-            style: theme.textTheme.bodyMedium,
-            maxLines: 2,
-            decoration: _inputDecoration('Back (definition or answer)', colorScheme, isDark),
           ),
         ],
       ),
@@ -609,8 +539,8 @@ class _UploadDialogState extends State<UploadDialog> {
         ),
         child: Column(
           children: [
-            Icon(
-              Icons.cloud_upload_outlined,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedCloudUpload,
               size: 32,
               color: colorScheme.onSurface.withAlpha(102),
             ),
@@ -641,13 +571,13 @@ class _UploadDialogState extends State<UploadDialog> {
       ),
       child: Row(
         children: [
-          Icon(_getFileIcon(file.mimeType), size: 18, color: colorScheme.onSurface.withAlpha(153)),
+          HugeIcon(icon: _getFileIcon(file.mimeType), size: 18, color: colorScheme.onSurface.withAlpha(153)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(file.name, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis),
           ),
           IconButton(
-            icon: Icon(Icons.close, size: 16, color: colorScheme.onSurface.withAlpha(102)),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16, color: colorScheme.onSurface.withAlpha(102)),
             onPressed: () => _removeFile(index),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -671,7 +601,7 @@ class _UploadDialogState extends State<UploadDialog> {
         const SizedBox(width: 8),
         IconButton(
           onPressed: _links.length < maxLinks ? _addLink : null,
-          icon: Icon(Icons.add_circle_outline, color: colorScheme.primary),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedAddCircle, size: 24, color: colorScheme.primary),
         ),
       ],
     );
@@ -689,8 +619,8 @@ class _UploadDialogState extends State<UploadDialog> {
       ),
       child: Row(
         children: [
-          Icon(
-            isYouTube ? Icons.play_circle_outline : Icons.link,
+          HugeIcon(
+            icon: isYouTube ? HugeIcons.strokeRoundedPlayCircle : HugeIcons.strokeRoundedLink01,
             size: 18,
             color: colorScheme.onSurface.withAlpha(153),
           ),
@@ -699,7 +629,7 @@ class _UploadDialogState extends State<UploadDialog> {
             child: Text(link, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis),
           ),
           IconButton(
-            icon: Icon(Icons.close, size: 16, color: colorScheme.onSurface.withAlpha(102)),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16, color: colorScheme.onSurface.withAlpha(102)),
             onPressed: () => _removeLink(index),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -754,7 +684,7 @@ class _UploadDialogState extends State<UploadDialog> {
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: colorScheme.error, size: 18),
+          HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: colorScheme.error, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -763,7 +693,7 @@ class _UploadDialogState extends State<UploadDialog> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.close, size: 16, color: colorScheme.error),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16, color: colorScheme.error),
             onPressed: () => setState(() => _error = null),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -790,7 +720,7 @@ class _UploadDialogState extends State<UploadDialog> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Generating flashcards...',
+            'Generating notes...',
             style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
@@ -817,19 +747,35 @@ class _UploadDialogState extends State<UploadDialog> {
               color: colorScheme.primary.withAlpha(20),
               borderRadius: BorderRadius.circular(32),
             ),
-            child: Icon(Icons.check_circle, size: 40, color: colorScheme.primary),
+            child: Center(
+              child: HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, size: 40, color: colorScheme.primary),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
-            'Flashcards Created!',
+            'Notes Created!',
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            '$_cardCount cards added to "$_setTitle"',
+            '"$_noteTitle" saved to your library',
             style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withAlpha(128)),
             textAlign: TextAlign.center,
           ),
+          if (_noteSubject.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _noteSubject,
+                style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.primary),
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           Row(
             children: [
@@ -863,10 +809,10 @@ class _UploadDialogState extends State<UploadDialog> {
     );
   }
 
-  IconData _getFileIcon(String mimeType) {
-    if (mimeType == 'application/pdf') return Icons.picture_as_pdf_rounded;
-    if (mimeType.startsWith('image/')) return Icons.image_rounded;
-    return Icons.description_rounded;
+  dynamic _getFileIcon(String mimeType) {
+    if (mimeType == 'application/pdf') return HugeIcons.strokeRoundedPdf01;
+    if (mimeType.startsWith('image/')) return HugeIcons.strokeRoundedImage01;
+    return HugeIcons.strokeRoundedFile01;
   }
 }
 
@@ -876,9 +822,4 @@ class _UploadedFile {
   final String mimeType;
 
   _UploadedFile({required this.bytes, required this.name, required this.mimeType});
-}
-
-class _CustomCard {
-  final TextEditingController frontController = TextEditingController();
-  final TextEditingController backController = TextEditingController();
 }
