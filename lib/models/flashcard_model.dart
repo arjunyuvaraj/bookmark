@@ -70,6 +70,7 @@ class SetModel {
     'sessions': sessions,
     'cards': cards.map((card) => card.toJson()).toList(),
   };
+
   // FACTORY: Use the factory to get more control over construction thought the passed JSON
   factory SetModel.fromJson(Map<String, dynamic> json, {String? id}) =>
       SetModel(
@@ -91,4 +92,29 @@ class SetModel {
                 .toList() ??
             [],
       );
+
+  // METHOD: Copy with method for creating modified copies
+  SetModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    List<Flashcard>? cards,
+    DateTime? dateAdded,
+    int? sessions,
+    String? fileUrl,
+    String? fileName,
+    FileType? fileType,
+  }) {
+    return SetModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      cards: cards ?? this.cards,
+      dateAdded: dateAdded ?? this.dateAdded,
+      sessions: sessions ?? this.sessions,
+      fileUrl: fileUrl ?? this.fileUrl,
+      fileName: fileName ?? this.fileName,
+      fileType: fileType ?? this.fileType,
+    );
+  }
 }

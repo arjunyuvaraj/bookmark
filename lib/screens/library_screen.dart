@@ -7,7 +7,7 @@ import 'package:bookmark/services/flashcard_service.dart';
 import 'package:bookmark/screens/flashcard_view_screen.dart';
 import 'package:bookmark/theme/color_scheme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:hugeicons/hugeicons.dart';
