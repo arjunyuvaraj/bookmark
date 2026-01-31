@@ -113,7 +113,12 @@ class FlashcardSetService {
   Future<bool> deleteSet(String userId, String setId, {String? fileUrl}) async {
     try {
       if (fileUrl != null) {
-        await _storage.refFromURL(fileUrl).delete();
+        try {
+          await _storage.refFromURL(fileUrl).delete();
+        } catch (e) {
+          // File might not exist, continue with set deletion
+          if (kDebugMode) print('Error deleting file: $e');
+        }
       }
 
       await _firestore
@@ -158,6 +163,66 @@ class FlashcardSetService {
       return true;
     } catch (e) {
       if (kDebugMode) print('Error adding card: $e');
+      return false;
+    }
+  }
+
+  // METHOD: Upload additional file to existing set
+  Future<Map<String, String>?> uploadAdditionalFile(
+    String userId,
+    String setTitle,
+    File? file,
+    Uint8List? webFile,
+  ) async {
+    try {
+      if (file == null && webFile == null) return null;
+      return await _uploadFile(userId, setTitle, file, webFile);
+    } catch (e) {
+      if (kDebugMode) print('Error uploading additional file: $e');
+      return null;
+    }
+  }
+
+  // METHOD: Determine file type from extension
+  FileType _getFileTypeFromName(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return FileType.pdf;
+      case 'mp4':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+        return FileType.video;
+      case 'csv':
+        return FileType.csv;
+      default:
+        return FileType.none;
+    }
+  }
+
+  // METHOD: Update set to add additional file reference
+  Future<bool> addFileToSet(
+    String userId,
+    String setId,
+    String fileUrl,
+    String fileName,
+  ) async {
+    try {
+      final fileType = _getFileTypeFromName(fileName);
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('sets')
+          .doc(setId)
+          .update({
+            'fileUrl': fileUrl,
+            'fileName': fileName,
+            'fileType': fileType.name,
+          });
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('Error adding file to set: $e');
       return false;
     }
   }
