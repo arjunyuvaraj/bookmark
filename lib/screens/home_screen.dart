@@ -5,7 +5,6 @@ import 'package:bookmark/components/upload_dialog.dart';
 import 'package:bookmark/services/user_stats_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';
 import 'package:bookmark/models/flashcard_model.dart';
-import 'package:bookmark/theme/color_scheme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,14 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(context, displayName, theme, colorScheme),
-              const SizedBox(height: 48),
-              _buildSectionHeader('QUICK ACTIONS', theme, colorScheme),
-              const SizedBox(height: 16),
-              _buildQuickActions(context, theme, colorScheme),
-              const SizedBox(height: 48),
-              _buildSectionHeader('DASHBOARD', theme, colorScheme),
-              const SizedBox(height: 16),
-              _buildDashboard(context, theme, colorScheme),
+              const SizedBox(height: 40),
+              if (_userId != null) ...[
+                _buildDashboard(context, theme, colorScheme),
+              ] else ...[
+                _buildEmptyState(theme, colorScheme),
+              ],
             ],
           ),
         ),
@@ -93,75 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, ThemeData theme, ColorScheme colorScheme) {
-    return Text(
-      title,
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: colorScheme.onSurface.withAlpha(102),
-        letterSpacing: 1.2,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context, ThemeData theme, ColorScheme colorScheme) {
-    return Row(
-      children: [
-        Expanded(
-          child: _QuickActionCard(
-            icon: HugeIcons.strokeRoundedCards01,
-            title: 'Study Flashcards',
-            subtitle: 'Review your sets',
-            onTap: () {},
-            theme: theme,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _QuickActionCard(
-            icon: HugeIcons.strokeRoundedQuiz02,
-            title: 'Take a Quiz',
-            subtitle: 'Test your knowledge',
-            onTap: () {},
-            theme: theme,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _QuickActionCard(
-            icon: HugeIcons.strokeRoundedBubbleChat,
-            title: 'AI Tutor',
-            subtitle: 'Ask questions',
-            onTap: () {},
-            theme: theme,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _QuickActionCard(
-            icon: HugeIcons.strokeRoundedLibrary,
-            title: 'Library',
-            subtitle: 'View all sets',
-            onTap: () {},
-            theme: theme,
-            colorScheme: colorScheme,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildDashboard(BuildContext context, ThemeData theme, ColorScheme colorScheme) {
-    if (_userId == null) {
-      return _buildEmptyState(theme, colorScheme);
-    }
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Stats Row - streams real data
+        // Stats Row
         StreamBuilder<UserStats>(
           stream: _statsService.streamUserStats(_userId!),
           builder: (context, statsSnapshot) {
@@ -175,10 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Row(
                   children: [
                     Expanded(
-                      child: _StatCard(
-                        value: '${stats.currentStreak}',
-                        label: 'Day Streak',
-                        icon: HugeIcons.strokeRoundedFire,
+                      child: _StreakCard(
+                        currentStreak: stats.currentStreak,
+                        longestStreak: stats.longestStreak,
                         theme: theme,
                         colorScheme: colorScheme,
                       ),
@@ -197,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _StatCard(
                         value: '${sets.length}',
-                        label: 'Study Sets',
+                        label: 'Flashcard Sets',
                         icon: HugeIcons.strokeRoundedFolder01,
                         theme: theme,
                         colorScheme: colorScheme,
@@ -207,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _StatCard(
                         value: '${stats.accuracy.round()}%',
-                        label: 'Accuracy',
+                        label: 'Quiz Accuracy',
                         icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                         theme: theme,
                         colorScheme: colorScheme,
@@ -219,14 +151,34 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
         ),
-        const SizedBox(height: 16),
-        // Recent Activity and Study Goals
+        const SizedBox(height: 24),
+
+        // Study Activity Heatmap
+        _StudyHeatmapCard(
+          userId: _userId!,
+          statsService: _statsService,
+          theme: theme,
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(height: 24),
+
+        // Bottom Row: Recent Activity, Weekly Performance, Study Goals
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 2,
               child: _RecentActivityCard(
+                userId: _userId!,
+                statsService: _statsService,
+                theme: theme,
+                colorScheme: colorScheme,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: _WeeklyPerformanceCard(
                 userId: _userId!,
                 statsService: _statsService,
                 theme: theme,
@@ -283,6 +235,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+// ============================================================================
+// CREATE NEW BUTTON
+// ============================================================================
 
 class _CreateNewButton extends StatefulWidget {
   final VoidCallback onUpload;
@@ -514,81 +470,102 @@ class _DropdownItemState extends State<_DropdownItem> {
   }
 }
 
-class _QuickActionCard extends StatefulWidget {
-  final dynamic icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+// ============================================================================
+// STREAK CARD (Enhanced)
+// ============================================================================
+
+class _StreakCard extends StatelessWidget {
+  final int currentStreak;
+  final int longestStreak;
   final ThemeData theme;
   final ColorScheme colorScheme;
 
-  const _QuickActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
+  const _StreakCard({
+    required this.currentStreak,
+    required this.longestStreak,
     required this.theme,
     required this.colorScheme,
   });
 
   @override
-  State<_QuickActionCard> createState() => _QuickActionCardState();
-}
-
-class _QuickActionCardState extends State<_QuickActionCard> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    final isDark = widget.theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
+    final isOnFire = currentStreak >= 3;
+    final fireColor = isOnFire ? Colors.orange : colorScheme.onSurface.withAlpha(102);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 120,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? widget.colorScheme.surface : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _isHovered
-                  ? widget.colorScheme.onSurface.withAlpha(50)
-                  : widget.colorScheme.outline.withAlpha(80),
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isOnFire ? Colors.orange.withAlpha(100) : colorScheme.outline.withAlpha(80),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isOnFire ? Colors.orange.withAlpha(30) : colorScheme.onSurface.withAlpha(15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedFire,
+                size: 24,
+                color: fireColor,
+              ),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              HugeIcon(
-                icon: widget.icon,
-                size: 24,
-                color: widget.colorScheme.onSurface.withAlpha(153),
-              ),
-              const Spacer(),
-              Text(
-                widget.title,
-                style: widget.theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '$currentStreak',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.5,
+                        color: isOnFire ? Colors.orange : null,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'day streak',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withAlpha(128),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                widget.subtitle,
-                style: widget.theme.textTheme.bodySmall?.copyWith(
-                  color: widget.colorScheme.onSurface.withAlpha(102),
+                const SizedBox(height: 2),
+                Text(
+                  'Best: $longestStreak days',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withAlpha(102),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
+
+// ============================================================================
+// STAT CARD
+// ============================================================================
 
 class _StatCard extends StatelessWidget {
   final String value;
@@ -646,6 +623,230 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// STUDY HEATMAP CARD
+// ============================================================================
+
+class _StudyHeatmapCard extends StatelessWidget {
+  final String userId;
+  final UserStatsService statsService;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _StudyHeatmapCard({
+    required this.userId,
+    required this.statsService,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Study Activity',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Less',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withAlpha(102),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  ...List.generate(5, (index) => Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _getHeatmapColor(index, isDark),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  )),
+                  const SizedBox(width: 4),
+                  Text(
+                    'More',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withAlpha(102),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          StreamBuilder<List<DailyStudyData>>(
+            stream: statsService.streamDailyStudyData(userId, days: 140), // ~20 weeks
+            builder: (context, snapshot) {
+              final data = snapshot.data ?? [];
+
+              if (data.isEmpty) {
+                return SizedBox(
+                  height: 100,
+                  child: Center(
+                    child: Text(
+                      'Start studying to see your activity',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withAlpha(102),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return _buildHeatmapGrid(data, isDark);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeatmapGrid(List<DailyStudyData> data, bool isDark) {
+    // Organize data into weeks (7 rows for days of week)
+    final weeks = <List<DailyStudyData?>>[];
+    var currentWeek = <DailyStudyData?>[];
+
+    // Pad the beginning to align with the correct day of week
+    if (data.isNotEmpty) {
+      final firstDayOfWeek = data.first.date.weekday; // 1=Mon, 7=Sun
+      for (int i = 1; i < firstDayOfWeek; i++) {
+        currentWeek.add(null);
+      }
+    }
+
+    for (final day in data) {
+      currentWeek.add(day);
+      if (currentWeek.length == 7) {
+        weeks.add(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // Add remaining days
+    if (currentWeek.isNotEmpty) {
+      while (currentWeek.length < 7) {
+        currentWeek.add(null);
+      }
+      weeks.add(currentWeek);
+    }
+
+    final dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Day labels
+        Column(
+          children: dayLabels.map((label) => SizedBox(
+            height: 14,
+            child: label.isNotEmpty
+                ? Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 10,
+                      color: colorScheme.onSurface.withAlpha(102),
+                    ),
+                  )
+                : const SizedBox(),
+          )).toList(),
+        ),
+        const SizedBox(width: 8),
+        // Grid
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: Row(
+              children: weeks.map((week) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Column(
+                    children: List.generate(7, (dayIndex) {
+                      final dayData = dayIndex < week.length ? week[dayIndex] : null;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Tooltip(
+                          message: dayData != null
+                              ? '${_formatDate(dayData.date)}\n${dayData.cardsStudied} cards, ${dayData.sessionsCompleted} sessions'
+                              : '',
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: dayData != null
+                                  ? _getHeatmapColor(dayData.activityLevel, isDark)
+                                  : colorScheme.onSurface.withAlpha(10),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getHeatmapColor(int level, bool isDark) {
+    if (isDark) {
+      switch (level) {
+        case 0: return Colors.white.withAlpha(15);
+        case 1: return Colors.green.withAlpha(80);
+        case 2: return Colors.green.withAlpha(140);
+        case 3: return Colors.green.withAlpha(200);
+        case 4: return Colors.green;
+        default: return Colors.white.withAlpha(15);
+      }
+    } else {
+      switch (level) {
+        case 0: return Colors.black.withAlpha(10);
+        case 1: return Colors.green.withAlpha(60);
+        case 2: return Colors.green.withAlpha(120);
+        case 3: return Colors.green.withAlpha(180);
+        case 4: return Colors.green.withAlpha(230);
+        default: return Colors.black.withAlpha(10);
+      }
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+}
+
+// ============================================================================
+// RECENT ACTIVITY CARD
+// ============================================================================
+
 class _RecentActivityCard extends StatelessWidget {
   final String userId;
   final UserStatsService statsService;
@@ -664,7 +865,7 @@ class _RecentActivityCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      height: 280,
+      height: 300,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark ? colorScheme.surface : Colors.white,
@@ -683,7 +884,7 @@ class _RecentActivityCard extends StatelessWidget {
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<List<ActivityItem>>(
-              stream: statsService.streamRecentActivity(userId, limit: 5),
+              stream: statsService.streamRecentActivity(userId, limit: 6),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -766,6 +967,19 @@ class _ActivityItemWidget extends StatelessWidget {
     }
   }
 
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'study':
+        return Colors.blue;
+      case 'quiz':
+        return Colors.green;
+      case 'created':
+        return Colors.purple;
+      default:
+        return colorScheme.onSurface;
+    }
+  }
+
   String _formatTime(DateTime timestamp) {
     final now = DateTime.now();
     final diff = now.difference(timestamp);
@@ -780,14 +994,26 @@ class _ActivityItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final typeColor = _getColorForType(activity.type);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          HugeIcon(
-            icon: _getIconForType(activity.type),
-            size: 18,
-            color: colorScheme.onSurface.withAlpha(102),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: typeColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Center(
+              child: HugeIcon(
+                icon: _getIconForType(activity.type),
+                size: 14,
+                color: typeColor,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -809,6 +1035,173 @@ class _ActivityItemWidget extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// WEEKLY PERFORMANCE CARD
+// ============================================================================
+
+class _WeeklyPerformanceCard extends StatelessWidget {
+  final String userId;
+  final UserStatsService statsService;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _WeeklyPerformanceCard({
+    required this.userId,
+    required this.statsService,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withAlpha(80)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Weekly Performance',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: StreamBuilder<List<WeeklyPerformance>>(
+              stream: statsService.streamWeeklyPerformance(userId, weeks: 8),
+              builder: (context, snapshot) {
+                final data = snapshot.data ?? [];
+
+                if (data.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedChartLineData02,
+                          size: 32,
+                          color: colorScheme.onSurface.withAlpha(60),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Complete quizzes to see performance',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withAlpha(102),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return _buildBarChart(data, isDark);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(List<WeeklyPerformance> data, bool isDark) {
+    final maxCards = data.isEmpty ? 1 : data.map((w) => w.totalCards).reduce((a, b) => a > b ? a : b);
+    final normalizedMax = maxCards == 0 ? 1 : maxCards;
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: data.map((week) {
+              final height = (week.totalCards / normalizedMax).clamp(0.0, 1.0);
+              final accuracy = week.accuracy;
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Tooltip(
+                    message: 'Week of ${_formatWeek(week.weekStart)}\n${week.totalCards} cards\n${accuracy.round()}% accuracy',
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (week.totalCards > 0)
+                          Text(
+                            '${week.totalCards}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 10,
+                              color: colorScheme.onSurface.withAlpha(128),
+                            ),
+                          ),
+                        const SizedBox(height: 4),
+                        Flexible(
+                          child: FractionallySizedBox(
+                            heightFactor: height == 0 ? 0.02 : height,
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: _getBarColor(accuracy, isDark),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: data.map((week) {
+            return Expanded(
+              child: Center(
+                child: Text(
+                  _formatWeekLabel(week.weekStart),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: colorScheme.onSurface.withAlpha(102),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Color _getBarColor(double accuracy, bool isDark) {
+    if (accuracy >= 80) return Colors.green.withAlpha(isDark ? 200 : 180);
+    if (accuracy >= 60) return Colors.blue.withAlpha(isDark ? 200 : 180);
+    if (accuracy >= 40) return Colors.orange.withAlpha(isDark ? 200 : 180);
+    return colorScheme.onSurface.withAlpha(isDark ? 80 : 60);
+  }
+
+  String _formatWeek(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
+  String _formatWeekLabel(DateTime date) {
+    return '${date.month}/${date.day}';
+  }
+}
+
+// ============================================================================
+// STUDY GOALS CARD
+// ============================================================================
+
 class _StudyGoalsCard extends StatelessWidget {
   final UserStats stats;
   final ThemeData theme;
@@ -825,7 +1218,7 @@ class _StudyGoalsCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      height: 280,
+      height: 300,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark ? colorScheme.surface : Colors.white,
@@ -841,27 +1234,30 @@ class _StudyGoalsCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _GoalProgress(
             label: 'Daily Cards',
             current: stats.cardsStudiedToday,
             target: stats.dailyGoalCards,
+            icon: HugeIcons.strokeRoundedCards01,
             theme: theme,
             colorScheme: colorScheme,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _GoalProgress(
             label: 'Weekly Sessions',
             current: stats.sessionsThisWeek,
             target: stats.weeklyGoalSessions,
+            icon: HugeIcons.strokeRoundedCalendar03,
             theme: theme,
             colorScheme: colorScheme,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _GoalProgress(
             label: 'Monthly Quizzes',
             current: stats.quizzesThisMonth,
             target: stats.monthlyGoalQuizzes,
+            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
             theme: theme,
             colorScheme: colorScheme,
           ),
@@ -875,6 +1271,7 @@ class _GoalProgress extends StatelessWidget {
   final String label;
   final int current;
   final int target;
+  final dynamic icon;
   final ThemeData theme;
   final ColorScheme colorScheme;
 
@@ -882,6 +1279,7 @@ class _GoalProgress extends StatelessWidget {
     required this.label,
     required this.current,
     required this.target,
+    required this.icon,
     required this.theme,
     required this.colorScheme,
   });
@@ -889,36 +1287,55 @@ class _GoalProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
+    final isComplete = current >= target;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withAlpha(153),
+            HugeIcon(
+              icon: icon,
+              size: 16,
+              color: isComplete ? Colors.green : colorScheme.onSurface.withAlpha(102),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withAlpha(153),
+                ),
               ),
             ),
             Text(
               '$current / $target',
               style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
+                color: isComplete ? Colors.green : null,
               ),
             ),
+            if (isComplete) ...[
+              const SizedBox(width: 4),
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                size: 14,
+                color: Colors.green,
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: colorScheme.onSurface.withAlpha(20),
-          valueColor: AlwaysStoppedAnimation<Color>(
-            colorScheme.onSurface.withAlpha(153),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: colorScheme.onSurface.withAlpha(20),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isComplete ? Colors.green : colorScheme.primary,
+            ),
+            minHeight: 6,
           ),
-          minHeight: 4,
-          borderRadius: BorderRadius.circular(2),
         ),
       ],
     );

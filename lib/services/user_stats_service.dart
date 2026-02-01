@@ -1,6 +1,92 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+/// Represents a single day's study data for the heatmap
+class DailyStudyData {
+  final DateTime date;
+  final int cardsStudied;
+  final int sessionsCompleted;
+  final int quizzesCompleted;
+  final int minutesStudied;
+
+  DailyStudyData({
+    required this.date,
+    this.cardsStudied = 0,
+    this.sessionsCompleted = 0,
+    this.quizzesCompleted = 0,
+    this.minutesStudied = 0,
+  });
+
+  int get activityLevel {
+    final total = cardsStudied + (sessionsCompleted * 5) + (quizzesCompleted * 10);
+    if (total == 0) return 0;
+    if (total <= 10) return 1;
+    if (total <= 25) return 2;
+    if (total <= 50) return 3;
+    return 4;
+  }
+
+  factory DailyStudyData.fromJson(Map<String, dynamic> json, DateTime date) {
+    return DailyStudyData(
+      date: date,
+      cardsStudied: json['cardsStudied'] ?? 0,
+      sessionsCompleted: json['sessionsCompleted'] ?? 0,
+      quizzesCompleted: json['quizzesCompleted'] ?? 0,
+      minutesStudied: json['minutesStudied'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'cardsStudied': cardsStudied,
+    'sessionsCompleted': sessionsCompleted,
+    'quizzesCompleted': quizzesCompleted,
+    'minutesStudied': minutesStudied,
+  };
+}
+
+/// Weekly performance data for charts
+class WeeklyPerformance {
+  final DateTime weekStart;
+  final int totalCards;
+  final int totalSessions;
+  final int correctAnswers;
+  final int totalAnswers;
+  final int quizzesTaken;
+
+  WeeklyPerformance({
+    required this.weekStart,
+    this.totalCards = 0,
+    this.totalSessions = 0,
+    this.correctAnswers = 0,
+    this.totalAnswers = 0,
+    this.quizzesTaken = 0,
+  });
+
+  double get accuracy {
+    if (totalAnswers == 0) return 0;
+    return (correctAnswers / totalAnswers) * 100;
+  }
+
+  factory WeeklyPerformance.fromJson(Map<String, dynamic> json, DateTime weekStart) {
+    return WeeklyPerformance(
+      weekStart: weekStart,
+      totalCards: json['totalCards'] ?? 0,
+      totalSessions: json['totalSessions'] ?? 0,
+      correctAnswers: json['correctAnswers'] ?? 0,
+      totalAnswers: json['totalAnswers'] ?? 0,
+      quizzesTaken: json['quizzesTaken'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'totalCards': totalCards,
+    'totalSessions': totalSessions,
+    'correctAnswers': correctAnswers,
+    'totalAnswers': totalAnswers,
+    'quizzesTaken': quizzesTaken,
+  };
+}
+
 class UserStats {
   final int currentStreak;
   final int longestStreak;
@@ -223,6 +309,21 @@ class UserStatsService {
         'quizzesThisMonth': quizzesMonth,
       }, SetOptions(merge: true));
 
+      // Update daily and weekly tracking data
+      await _updateDailyData(
+        userId: userId,
+        cardsStudied: cardsStudied,
+        sessionsCompleted: 1,
+      );
+
+      await _updateWeeklyData(
+        userId: userId,
+        totalCards: cardsStudied,
+        totalSessions: 1,
+        correctAnswers: correctAnswers,
+        totalAnswers: totalAnswers,
+      );
+
       // Log activity
       await logActivity(
         userId: userId,
@@ -260,6 +361,19 @@ class UserStatsService {
         'totalAnswers': FieldValue.increment(totalQuestions),
         'quizzesThisMonth': quizzesMonth,
       });
+
+      // Update daily and weekly tracking data
+      await _updateDailyData(
+        userId: userId,
+        quizzesCompleted: 1,
+      );
+
+      await _updateWeeklyData(
+        userId: userId,
+        correctAnswers: score,
+        totalAnswers: totalQuestions,
+        quizzesTaken: 1,
+      );
 
       // Log activity
       final percentage = totalQuestions > 0 ? ((score / totalQuestions) * 100).round() : 0;
@@ -367,5 +481,186 @@ class UserStatsService {
     final firstDayOfYear = DateTime(date.year, 1, 1);
     final daysSinceFirstDay = date.difference(firstDayOfYear).inDays;
     return ((daysSinceFirstDay + firstDayOfYear.weekday - 1) / 7).floor() + 1;
+  }
+
+  // Daily data collection reference
+  CollectionReference _dailyDataCollection(String userId) {
+    return _firestore.collection('users').doc(userId).collection('dailyData');
+  }
+
+  // Weekly data collection reference
+  CollectionReference _weeklyDataCollection(String userId) {
+    return _firestore.collection('users').doc(userId).collection('weeklyData');
+  }
+
+  String _dateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _weekKey(DateTime date) {
+    final monday = date.subtract(Duration(days: date.weekday - 1));
+    return _dateKey(monday);
+  }
+
+  /// Record daily study activity for heatmap
+  Future<void> _updateDailyData({
+    required String userId,
+    int cardsStudied = 0,
+    int sessionsCompleted = 0,
+    int quizzesCompleted = 0,
+    int minutesStudied = 0,
+  }) async {
+    try {
+      final dateKey = _dateKey(DateTime.now());
+      await _dailyDataCollection(userId).doc(dateKey).set({
+        'cardsStudied': FieldValue.increment(cardsStudied),
+        'sessionsCompleted': FieldValue.increment(sessionsCompleted),
+        'quizzesCompleted': FieldValue.increment(quizzesCompleted),
+        'minutesStudied': FieldValue.increment(minutesStudied),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      if (kDebugMode) print('Error updating daily data: $e');
+    }
+  }
+
+  /// Record weekly performance data
+  Future<void> _updateWeeklyData({
+    required String userId,
+    int totalCards = 0,
+    int totalSessions = 0,
+    int correctAnswers = 0,
+    int totalAnswers = 0,
+    int quizzesTaken = 0,
+  }) async {
+    try {
+      final weekKey = _weekKey(DateTime.now());
+      await _weeklyDataCollection(userId).doc(weekKey).set({
+        'totalCards': FieldValue.increment(totalCards),
+        'totalSessions': FieldValue.increment(totalSessions),
+        'correctAnswers': FieldValue.increment(correctAnswers),
+        'totalAnswers': FieldValue.increment(totalAnswers),
+        'quizzesTaken': FieldValue.increment(quizzesTaken),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      if (kDebugMode) print('Error updating weekly data: $e');
+    }
+  }
+
+  /// Get daily study data for heatmap (last N days)
+  Future<List<DailyStudyData>> getDailyStudyData(String userId, {int days = 365}) async {
+    try {
+      final endDate = DateTime.now();
+      final startDate = endDate.subtract(Duration(days: days));
+
+      final snapshot = await _dailyDataCollection(userId).get();
+      final dataMap = <String, Map<String, dynamic>>{};
+
+      for (final doc in snapshot.docs) {
+        dataMap[doc.id] = doc.data() as Map<String, dynamic>;
+      }
+
+      final result = <DailyStudyData>[];
+      for (int i = 0; i < days; i++) {
+        final date = startDate.add(Duration(days: i));
+        final dateKey = _dateKey(date);
+        final data = dataMap[dateKey];
+
+        if (data != null) {
+          result.add(DailyStudyData.fromJson(data, date));
+        } else {
+          result.add(DailyStudyData(date: date));
+        }
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) print('Error getting daily study data: $e');
+      return [];
+    }
+  }
+
+  /// Stream daily study data for heatmap
+  Stream<List<DailyStudyData>> streamDailyStudyData(String userId, {int days = 365}) {
+    return _dailyDataCollection(userId).snapshots().map((snapshot) {
+      final endDate = DateTime.now();
+      final startDate = endDate.subtract(Duration(days: days));
+
+      final dataMap = <String, Map<String, dynamic>>{};
+      for (final doc in snapshot.docs) {
+        dataMap[doc.id] = doc.data() as Map<String, dynamic>;
+      }
+
+      final result = <DailyStudyData>[];
+      for (int i = 0; i < days; i++) {
+        final date = startDate.add(Duration(days: i));
+        final dateKey = _dateKey(date);
+        final data = dataMap[dateKey];
+
+        if (data != null) {
+          result.add(DailyStudyData.fromJson(data, date));
+        } else {
+          result.add(DailyStudyData(date: date));
+        }
+      }
+
+      return result;
+    });
+  }
+
+  /// Get weekly performance data (last N weeks)
+  Future<List<WeeklyPerformance>> getWeeklyPerformance(String userId, {int weeks = 12}) async {
+    try {
+      final snapshot = await _weeklyDataCollection(userId)
+          .orderBy(FieldPath.documentId, descending: true)
+          .limit(weeks)
+          .get();
+
+      final result = <WeeklyPerformance>[];
+      for (final doc in snapshot.docs) {
+        final parts = doc.id.split('-');
+        if (parts.length == 3) {
+          final date = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
+          result.add(WeeklyPerformance.fromJson(
+            doc.data() as Map<String, dynamic>,
+            date,
+          ));
+        }
+      }
+
+      return result.reversed.toList();
+    } catch (e) {
+      if (kDebugMode) print('Error getting weekly performance: $e');
+      return [];
+    }
+  }
+
+  /// Stream weekly performance data
+  Stream<List<WeeklyPerformance>> streamWeeklyPerformance(String userId, {int weeks = 12}) {
+    return _weeklyDataCollection(userId)
+        .orderBy(FieldPath.documentId, descending: true)
+        .limit(weeks)
+        .snapshots()
+        .map((snapshot) {
+      final result = <WeeklyPerformance>[];
+      for (final doc in snapshot.docs) {
+        final parts = doc.id.split('-');
+        if (parts.length == 3) {
+          final date = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
+          result.add(WeeklyPerformance.fromJson(
+            doc.data() as Map<String, dynamic>,
+            date,
+          ));
+        }
+      }
+      return result.reversed.toList();
+    });
   }
 }
