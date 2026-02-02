@@ -4,13 +4,18 @@ import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/services/notes_service.dart';
 import 'package:bookmark/services/prompt_service.dart';
 import 'package:bookmark/services/flashcard_service.dart';
+import 'package:bookmark/services/user_stats_service.dart';
 import 'package:bookmark/screens/flashcard_view_screen.dart';
+import 'package:bookmark/screens/flashcard_setting_screen.dart';
 import 'package:bookmark/theme/color_scheme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:hugeicons/hugeicons.dart';
+
+// Enum to filter content type
+enum ContentType { all, notes, flashcards }
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -21,11 +26,29 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   NoteModel? _selectedNote;
+  SetModel? _selectedSet;
+  ContentType _contentFilter = ContentType.all;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   void _selectNote(NoteModel? note) {
     setState(() {
       _selectedNote = note;
+      _selectedSet = null;
     });
+  }
+
+  void _selectSet(SetModel? set) {
+    setState(() {
+      _selectedSet = set;
+      _selectedNote = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -38,55 +61,285 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     return StreamBuilder<List<NoteModel>>(
       stream: NotesService().streamUserNotes(currentUid),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+      builder: (context, notesSnapshot) {
+        return StreamBuilder<List<SetModel>>(
+          stream: FlashcardSetService().streamUserSets(currentUid),
+          builder: (context, setsSnapshot) {
+            if (notesSnapshot.connectionState == ConnectionState.waiting ||
+                setsSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
-        }
+            if (notesSnapshot.hasError) {
+              return Center(child: Text("Error: ${notesSnapshot.error}"));
+            }
+            if (setsSnapshot.hasError) {
+              return Center(child: Text("Error: ${setsSnapshot.error}"));
+            }
 
-        final notes = snapshot.data ?? [];
+            final notes = notesSnapshot.data ?? [];
+            final sets = setsSnapshot.data ?? [];
 
-        if (notes.isEmpty) {
-          return _buildEmptyState(context);
-        }
+            // Filter based on search query
+            final filteredNotes = _searchQuery.isEmpty
+                ? notes
+                : notes
+                      .where(
+                        (note) =>
+                            note.title.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ||
+                            note.subject.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ),
+                      )
+                      .toList();
 
-        // If a note is selected, show the note detail view
-        if (_selectedNote != null) {
-          // Check if the selected note still exists
-          final noteStillExists = notes.any((n) => n.id == _selectedNote!.id);
-          if (!noteStillExists) {
-            // Note was deleted, clear selection
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _selectNote(null);
-            });
-            return _buildNotesList(notes);
-          }
-          return _NoteDetailView(
-            note: _selectedNote!,
-            onBack: () => _selectNote(null),
-            onDeleted: () => _selectNote(null),
-          );
-        }
+            final filteredSets = _searchQuery.isEmpty
+                ? sets
+                : sets
+                      .where(
+                        (set) =>
+                            set.title.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ||
+                            set.description.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ),
+                      )
+                      .toList();
 
-        return _buildNotesList(notes);
+            if (filteredNotes.isEmpty && filteredSets.isEmpty) {
+              return _buildEmptyState(context);
+            }
+
+            // If a note is selected, show the note detail view
+            if (_selectedNote != null) {
+              final noteStillExists = notes.any(
+                (n) => n.id == _selectedNote!.id,
+              );
+              if (!noteStillExists) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _selectNote(null);
+                });
+                return _buildContentList(filteredNotes, filteredSets);
+              }
+              return _NoteDetailView(
+                note: _selectedNote!,
+                onBack: () => _selectNote(null),
+                onDeleted: () => _selectNote(null),
+              );
+            }
+
+            // If a set is selected, show the set settings view
+            if (_selectedSet != null) {
+              final setStillExists = sets.any((s) => s.id == _selectedSet!.id);
+              if (!setStillExists) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _selectSet(null);
+                });
+                return _buildContentList(filteredNotes, filteredSets);
+              }
+              return FlashcardSettingScreen(set: _selectedSet!);
+            }
+
+            return _buildContentList(filteredNotes, filteredSets);
+          },
+        );
       },
     );
   }
 
-  Widget _buildNotesList(List<NoteModel> notes) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: notes.length,
-      itemBuilder: (BuildContext context, int index) {
-        final NoteModel note = notes[index];
-        return NoteCard(
-          note: note,
-          onTap: () => _selectNote(note),
-        );
-      },
+  Widget _buildContentList(List<NoteModel> notes, List<SetModel> sets) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // Filter content based on selected type
+    final displayNotes = _contentFilter == ContentType.flashcards
+        ? <NoteModel>[]
+        : notes;
+    final displaySets = _contentFilter == ContentType.notes
+        ? <SetModel>[]
+        : sets;
+
+    return Column(
+      children: [
+        // Search bar and filter chips
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Search bar
+              TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search notes and flashcards...',
+                  prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedSearch01),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colorScheme.outline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colorScheme.outline.withAlpha(128),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Filter chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: Text('All (${notes.length + sets.length})'),
+                      selected: _contentFilter == ContentType.all,
+                      onSelected: (selected) {
+                        setState(() {
+                          _contentFilter = ContentType.all;
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      label: Text('Notes (${notes.length})'),
+                      selected: _contentFilter == ContentType.notes,
+                      onSelected: (selected) {
+                        setState(() {
+                          _contentFilter = ContentType.notes;
+                        });
+                      },
+                      avatar: HugeIcon(
+                        icon: HugeIcons.strokeRoundedNote,
+                        size: 18,
+                        color: _contentFilter == ContentType.notes
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      label: Text('Flashcards (${sets.length})'),
+                      selected: _contentFilter == ContentType.flashcards,
+                      onSelected: (selected) {
+                        setState(() {
+                          _contentFilter = ContentType.flashcards;
+                        });
+                      },
+                      avatar: HugeIcon(
+                        icon: HugeIcons.strokeRoundedCards01,
+                        size: 18,
+                        color: _contentFilter == ContentType.flashcards
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Content list
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              // Notes section
+              if (displayNotes.isNotEmpty) ...[
+                if (_contentFilter == ContentType.all)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12, top: 4),
+                    child: Row(
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedNote,
+                          size: 20,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Notes',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ...displayNotes.map(
+                  (note) =>
+                      NoteCard(note: note, onTap: () => _selectNote(note)),
+                ),
+                if (displaySets.isNotEmpty) const SizedBox(height: 16),
+              ],
+              // Flashcard sets section
+              if (displaySets.isNotEmpty) ...[
+                if (_contentFilter == ContentType.all)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12, top: 4),
+                    child: Row(
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedCards01,
+                          size: 20,
+                          color: Colors.purple,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Flashcard Sets',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.purple,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ...displaySets.map(
+                  (set) => FlashcardSetCard(
+                    set: set,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FlashcardPracticeScreen(set: set),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -105,14 +358,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No notes yet',
+            _searchQuery.isEmpty ? 'No content yet' : 'No results found',
             style: theme.textTheme.titleMedium?.copyWith(
               color: colorScheme.onSurface.withAlpha(153),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Upload content to generate study notes',
+            _searchQuery.isEmpty
+                ? 'Upload content to generate study notes'
+                : 'Try a different search term',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface.withAlpha(102),
             ),
@@ -122,6 +377,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 }
+
+// ... (NoteCard and FlashcardSetCard remain the same)
 
 class NoteCard extends StatelessWidget {
   final NoteModel note;
@@ -175,14 +432,50 @@ class NoteCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Note indicator icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedNote,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      note.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            HugeIcon(
+                              icon: _getSourceIcon(note.sourceType),
+                              size: 14,
+                              color: colorScheme.onSurface.withAlpha(153),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatDate(note.createdAt),
+                              style: TextStyle(
+                                color: colorScheme.onSurface.withAlpha(153),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   Container(
@@ -205,24 +498,101 @@ class NoteCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FlashcardSetCard extends StatelessWidget {
+  final SetModel set;
+  final VoidCallback onTap;
+
+  const FlashcardSetCard({super.key, required this.set, required this.onTap});
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays == 0) {
+      return 'Today';
+    } else if (diff.inDays == 1) {
+      return 'Yesterday';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  HugeIcon(
-                    icon: _getSourceIcon(note.sourceType),
-                    size: 16,
-                    color: colorScheme.onSurface.withAlpha(153),
+                  // Flashcard indicator icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedCards01,
+                      size: 20,
+                      color: Colors.purple,
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _formatDate(note.createdAt),
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withAlpha(153),
-                      fontSize: 14,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          set.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${set.cards.length} cards • ${_formatDate(set.dateAdded)}',
+                          style: TextStyle(
+                            color: colorScheme.onSurface.withAlpha(153),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
+              if (set.description.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  set.description,
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withAlpha(180),
+                    fontSize: 13,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
           ),
         ),
@@ -251,6 +621,7 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
   final NotesService _notesService = NotesService();
   final PromptService _promptService = PromptService();
   final FlashcardSetService _flashcardService = FlashcardSetService();
+  final UserStatsService _statsService = UserStatsService();
   bool _isGenerating = false;
   String? _generatingType;
 
@@ -265,11 +636,14 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
     });
 
     try {
-      final result = await _promptService.generateFlashcardsFromNotes(widget.note.notes);
+      final result = await _promptService.generateFlashcardsFromNotes(
+        widget.note.notes,
+      );
       final cleanResult = _cleanJsonResponse(result);
       final jsonData = jsonDecode(cleanResult) as Map<String, dynamic>;
 
-      final cards = (jsonData['cards'] as List?)
+      final cards =
+          (jsonData['cards'] as List?)
               ?.map((card) => Flashcard.fromJson(card as Map<String, dynamic>))
               .toList() ??
           [];
@@ -345,11 +719,14 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
     });
 
     try {
-      final result = await _promptService.generateQuizFromNotes(widget.note.notes);
+      final result = await _promptService.generateQuizFromNotes(
+        widget.note.notes,
+      );
       final cleanResult = _cleanJsonResponse(result);
       final jsonData = jsonDecode(cleanResult) as Map<String, dynamic>;
 
-      final questions = (jsonData['questions'] as List?)
+      final questions =
+          (jsonData['questions'] as List?)
               ?.map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
               .toList() ??
           [];
@@ -364,16 +741,32 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
           _generatingType = null;
         });
 
-        // Navigate to quiz screen (full screen)
-        Navigator.push(
+        // Navigate to quiz screen (full screen) and wait for result
+        final result = await Navigator.push<Map<String, dynamic>>(
           context,
           MaterialPageRoute(
             builder: (context) => _QuizScreen(
               title: widget.note.title,
               questions: questions,
+              userId: _userId!,
+              noteId: widget.note.id ?? '',
             ),
           ),
         );
+
+        // Record quiz completion in stats if quiz was completed
+        if (result != null && result['completed'] == true) {
+          final score = result['score'] as int;
+          final totalQuestions = result['totalQuestions'] as int;
+
+          await _statsService.recordQuizCompleted(
+            userId: _userId!,
+            setId: widget.note.id ?? 'note_quiz',
+            setTitle: widget.note.title,
+            score: score,
+            totalQuestions: totalQuestions,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -400,7 +793,9 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Note'),
-        content: const Text('Are you sure you want to delete this note? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this note? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -525,7 +920,20 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
@@ -547,9 +955,7 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 1),
-              ),
+              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
               children: [
@@ -666,7 +1072,10 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
                             size: 20,
                           ),
                           const SizedBox(width: 12),
-                          const Text('Delete', style: TextStyle(color: Colors.red)),
+                          const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ],
                       ),
                     ),
@@ -680,14 +1089,15 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 1),
-              ),
+              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primary.withAlpha(26),
                     borderRadius: BorderRadius.circular(16),
@@ -738,10 +1148,14 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
 class _QuizScreen extends StatefulWidget {
   final String title;
   final List<QuizQuestion> questions;
+  final String userId;
+  final String noteId;
 
   const _QuizScreen({
     required this.title,
     required this.questions,
+    required this.userId,
+    required this.noteId,
   });
 
   @override
@@ -801,7 +1215,13 @@ class _QuizScreenState extends State<_QuizScreen> {
     final subtitleColor = isDark ? darkTextSecondary : lightTextSecondary;
 
     if (_quizComplete) {
-      return _buildResultsScreen(theme, colorScheme, bgColor, textColor, subtitleColor);
+      return _buildResultsScreen(
+        theme,
+        colorScheme,
+        bgColor,
+        textColor,
+        subtitleColor,
+      );
     }
 
     final question = widget.questions[_currentIndex];
@@ -817,7 +1237,10 @@ class _QuizScreenState extends State<_QuizScreen> {
             color: textColor,
             size: 24,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Return null when backing out without completing
+            Navigator.pop(context, null);
+          },
         ),
         title: Text(
           'Question ${_currentIndex + 1}/${widget.questions.length}',
@@ -876,10 +1299,13 @@ class _QuizScreenState extends State<_QuizScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: bgColor ?? (isDark ? darkSurface : lightSurface),
+                          color:
+                              bgColor ?? (isDark ? darkSurface : lightSurface),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: borderColor ?? colorScheme.outline.withAlpha(50),
+                            color:
+                                borderColor ??
+                                colorScheme.outline.withAlpha(50),
                             width: borderColor != null ? 2 : 1,
                           ),
                         ),
@@ -967,10 +1393,14 @@ class _QuizScreenState extends State<_QuizScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   child: Text(
-                    _currentIndex < widget.questions.length - 1 ? 'Next Question' : 'See Results',
+                    _currentIndex < widget.questions.length - 1
+                        ? 'Next Question'
+                        : 'See Results',
                     style: TextStyle(
                       color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w500,
@@ -1005,7 +1435,14 @@ class _QuizScreenState extends State<_QuizScreen> {
             color: textColor,
             size: 24,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Return quiz completion data
+            Navigator.pop(context, {
+              'completed': true,
+              'score': _correctCount,
+              'totalQuestions': widget.questions.length,
+            });
+          },
         ),
         title: Text(
           'Quiz Complete',
@@ -1058,10 +1495,19 @@ class _QuizScreenState extends State<_QuizScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        // Return quiz completion data
+                        Navigator.pop(context, {
+                          'completed': true,
+                          'score': _correctCount,
+                          'totalQuestions': widget.questions.length,
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         side: BorderSide(color: colorScheme.outline),
                       ),
                       child: const Text('Done'),
@@ -1074,7 +1520,9 @@ class _QuizScreenState extends State<_QuizScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: const Text('Try Again'),
                     ),
@@ -1088,6 +1536,8 @@ class _QuizScreenState extends State<_QuizScreen> {
     );
   }
 }
+
+// Keep the existing classes: _NotesMarkdownContent, _SafeLatex, _LatexPart
 
 /// Markdown content with LaTeX support for notes
 class _NotesMarkdownContent extends StatelessWidget {
@@ -1173,7 +1623,12 @@ class _NotesMarkdownContent extends StatelessWidget {
     }
 
     return widgets.isEmpty
-        ? [SelectableText(text, style: TextStyle(color: textColor, fontSize: 15, height: 1.6))]
+        ? [
+            SelectableText(
+              text,
+              style: TextStyle(color: textColor, fontSize: 15, height: 1.6),
+            ),
+          ]
         : widgets;
   }
 
@@ -1208,10 +1663,30 @@ class _NotesMarkdownContent extends StatelessWidget {
       selectable: true,
       styleSheet: MarkdownStyleSheet(
         p: TextStyle(color: textColor, fontSize: 15, height: 1.6),
-        h1: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold, height: 1.4),
-        h2: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold, height: 1.4),
-        h3: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold, height: 1.4),
-        h4: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold, height: 1.4),
+        h1: TextStyle(
+          color: textColor,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          height: 1.4,
+        ),
+        h2: TextStyle(
+          color: textColor,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          height: 1.4,
+        ),
+        h3: TextStyle(
+          color: textColor,
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+          height: 1.4,
+        ),
+        h4: TextStyle(
+          color: textColor,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          height: 1.4,
+        ),
         strong: TextStyle(color: textColor, fontWeight: FontWeight.bold),
         em: TextStyle(color: textColor, fontStyle: FontStyle.italic),
         code: TextStyle(
@@ -1225,11 +1700,12 @@ class _NotesMarkdownContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
         ),
         codeblockPadding: const EdgeInsets.all(12),
-        blockquote: TextStyle(color: textColor.withAlpha(180), fontStyle: FontStyle.italic),
+        blockquote: TextStyle(
+          color: textColor.withAlpha(180),
+          fontStyle: FontStyle.italic,
+        ),
         blockquoteDecoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(color: borderColor, width: 3),
-          ),
+          border: Border(left: BorderSide(color: borderColor, width: 3)),
         ),
         blockquotePadding: const EdgeInsets.only(left: 12),
         listBullet: TextStyle(color: textColor),
@@ -1237,9 +1713,7 @@ class _NotesMarkdownContent extends StatelessWidget {
         tableBody: TextStyle(color: textColor),
         tableBorder: TableBorder.all(color: borderColor, width: 1),
         horizontalRuleDecoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: borderColor, width: 1),
-          ),
+          border: Border(top: BorderSide(color: borderColor, width: 1)),
         ),
       ),
     );
@@ -1251,7 +1725,9 @@ class _NotesMarkdownContent extends StatelessWidget {
     // Pattern for block LaTeX: $$...$$ or \[...\]
     final blockPattern = RegExp(r'\$\$([\s\S]*?)\$\$|\\\[([\s\S]*?)\\\]');
     // Pattern for inline LaTeX: $...$ or \(...\) - but not $$
-    final inlinePattern = RegExp(r'(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)|\\\((.*?)\\\)');
+    final inlinePattern = RegExp(
+      r'(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)|\\\((.*?)\\\)',
+    );
 
     int lastEnd = 0;
 
@@ -1259,7 +1735,9 @@ class _NotesMarkdownContent extends StatelessWidget {
     final blockMatches = blockPattern.allMatches(input).toList();
     for (final match in blockMatches) {
       if (match.start > lastEnd) {
-        parts.add(_LatexPart(input.substring(lastEnd, match.start), false, false));
+        parts.add(
+          _LatexPart(input.substring(lastEnd, match.start), false, false),
+        );
       }
       final content = match.group(1) ?? match.group(2) ?? '';
       parts.add(_LatexPart(content.trim(), true, true));
@@ -1294,7 +1772,9 @@ class _NotesMarkdownContent extends StatelessWidget {
     final matches = pattern.allMatches(text).toList();
     for (final match in matches) {
       if (match.start > lastEnd) {
-        parts.add(_LatexPart(text.substring(lastEnd, match.start), false, false));
+        parts.add(
+          _LatexPart(text.substring(lastEnd, match.start), false, false),
+        );
       }
       final content = match.group(1) ?? match.group(2) ?? '';
       if (content.isNotEmpty) {

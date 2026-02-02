@@ -22,30 +22,6 @@ class StudySet {
     );
   }
 
-  SetModel copyWith({
-    String? id,
-    String? title,
-    String? description,
-    List<Flashcard>? cards,
-    DateTime? dateAdded,
-    int? sessions,
-    String? fileUrl,
-    String? fileName,
-    FileType? fileType,
-  }) {
-    return SetModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      cards: cards ?? this.cards,
-      dateAdded: dateAdded ?? this.dateAdded,
-      sessions: sessions ?? this.sessions,
-      fileUrl: fileUrl ?? this.fileUrl,
-      fileName: fileName ?? this.fileName,
-      fileType: fileType ?? this.fileType,
-    );
-  }
-
   Map<String, dynamic> toJson() {
     return {
       'flashcards': flashcards.map((e) => e.toJson()).toList(),

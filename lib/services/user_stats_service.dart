@@ -18,7 +18,8 @@ class DailyStudyData {
   });
 
   int get activityLevel {
-    final total = cardsStudied + (sessionsCompleted * 5) + (quizzesCompleted * 10);
+    final total =
+        cardsStudied + (sessionsCompleted * 5) + (quizzesCompleted * 10);
     if (total == 0) return 0;
     if (total <= 10) return 1;
     if (total <= 25) return 2;
@@ -67,7 +68,10 @@ class WeeklyPerformance {
     return (correctAnswers / totalAnswers) * 100;
   }
 
-  factory WeeklyPerformance.fromJson(Map<String, dynamic> json, DateTime weekStart) {
+  factory WeeklyPerformance.fromJson(
+    Map<String, dynamic> json,
+    DateTime weekStart,
+  ) {
     return WeeklyPerformance(
       weekStart: weekStart,
       totalCards: json['totalCards'] ?? 0,
@@ -148,7 +152,9 @@ class UserStats {
     'totalSessions': totalSessions,
     'correctAnswers': correctAnswers,
     'totalAnswers': totalAnswers,
-    'lastStudyDate': lastStudyDate != null ? Timestamp.fromDate(lastStudyDate!) : null,
+    'lastStudyDate': lastStudyDate != null
+        ? Timestamp.fromDate(lastStudyDate!)
+        : null,
     'dailyGoalCards': dailyGoalCards,
     'weeklyGoalSessions': weeklyGoalSessions,
     'monthlyGoalQuizzes': monthlyGoalQuizzes,
@@ -203,7 +209,11 @@ class UserStatsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   DocumentReference _statsDoc(String userId) {
-    return _firestore.collection('users').doc(userId).collection('data').doc('stats');
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('data')
+        .doc('stats');
   }
 
   CollectionReference _activityCollection(String userId) {
@@ -270,13 +280,16 @@ class UserStatsService {
       }
 
       // Check if this is the same day
-      final isSameDay = lastDate != null &&
+      final isSameDay =
+          lastDate != null &&
           lastDate.year == now.year &&
           lastDate.month == now.month &&
           lastDate.day == now.day;
 
       // Reset daily/weekly/monthly counters if needed
-      int cardsToday = isSameDay ? stats.cardsStudiedToday + cardsStudied : cardsStudied;
+      int cardsToday = isSameDay
+          ? stats.cardsStudiedToday + cardsStudied
+          : cardsStudied;
 
       // Check week reset
       int sessionsWeek = stats.sessionsThisWeek;
@@ -295,7 +308,9 @@ class UserStatsService {
 
       await _statsDoc(userId).set({
         'currentStreak': newStreak,
-        'longestStreak': newStreak > stats.longestStreak ? newStreak : stats.longestStreak,
+        'longestStreak': newStreak > stats.longestStreak
+            ? newStreak
+            : stats.longestStreak,
         'totalCardsStudied': stats.totalCardsStudied + cardsStudied,
         'totalSessions': stats.totalSessions + 1,
         'correctAnswers': stats.correctAnswers + correctAnswers,
@@ -363,10 +378,7 @@ class UserStatsService {
       });
 
       // Update daily and weekly tracking data
-      await _updateDailyData(
-        userId: userId,
-        quizzesCompleted: 1,
-      );
+      await _updateDailyData(userId: userId, quizzesCompleted: 1);
 
       await _updateWeeklyData(
         userId: userId,
@@ -376,7 +388,9 @@ class UserStatsService {
       );
 
       // Log activity
-      final percentage = totalQuestions > 0 ? ((score / totalQuestions) * 100).round() : 0;
+      final percentage = totalQuestions > 0
+          ? ((score / totalQuestions) * 100).round()
+          : 0;
       await logActivity(
         userId: userId,
         type: 'quiz',
@@ -417,29 +431,38 @@ class UserStatsService {
     int? score,
   }) async {
     try {
-      await _activityCollection(userId).add(ActivityItem(
-        id: '',
-        type: type,
-        title: title,
-        setId: setId,
-        setTitle: setTitle,
-        score: score,
-        timestamp: DateTime.now(),
-      ).toJson());
+      await _activityCollection(userId).add(
+        ActivityItem(
+          id: '',
+          type: type,
+          title: title,
+          setId: setId,
+          setTitle: setTitle,
+          score: score,
+          timestamp: DateTime.now(),
+        ).toJson(),
+      );
     } catch (e) {
       if (kDebugMode) print('Error logging activity: $e');
     }
   }
 
-  Future<List<ActivityItem>> getRecentActivity(String userId, {int limit = 10}) async {
+  Future<List<ActivityItem>> getRecentActivity(
+    String userId, {
+    int limit = 10,
+  }) async {
     try {
-      final snapshot = await _activityCollection(userId)
-          .orderBy('timestamp', descending: true)
-          .limit(limit)
-          .get();
+      final snapshot = await _activityCollection(
+        userId,
+      ).orderBy('timestamp', descending: true).limit(limit).get();
 
       return snapshot.docs
-          .map((doc) => ActivityItem.fromJson(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => ActivityItem.fromJson(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       if (kDebugMode) print('Error getting activity: $e');
@@ -447,14 +470,24 @@ class UserStatsService {
     }
   }
 
-  Stream<List<ActivityItem>> streamRecentActivity(String userId, {int limit = 10}) {
+  Stream<List<ActivityItem>> streamRecentActivity(
+    String userId, {
+    int limit = 10,
+  }) {
     return _activityCollection(userId)
         .orderBy('timestamp', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ActivityItem.fromJson(doc.data() as Map<String, dynamic>, doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => ActivityItem.fromJson(
+                  doc.data() as Map<String, dynamic>,
+                  doc.id,
+                ),
+              )
+              .toList(),
+        );
   }
 
   Future<void> updateGoals({
@@ -466,8 +499,10 @@ class UserStatsService {
     try {
       final updates = <String, dynamic>{};
       if (dailyCards != null) updates['dailyGoalCards'] = dailyCards;
-      if (weeklySessions != null) updates['weeklyGoalSessions'] = weeklySessions;
-      if (monthlyQuizzes != null) updates['monthlyGoalQuizzes'] = monthlyQuizzes;
+      if (weeklySessions != null)
+        updates['weeklyGoalSessions'] = weeklySessions;
+      if (monthlyQuizzes != null)
+        updates['monthlyGoalQuizzes'] = monthlyQuizzes;
 
       if (updates.isNotEmpty) {
         await _statsDoc(userId).update(updates);
@@ -547,7 +582,10 @@ class UserStatsService {
   }
 
   /// Get daily study data for heatmap (last N days)
-  Future<List<DailyStudyData>> getDailyStudyData(String userId, {int days = 365}) async {
+  Future<List<DailyStudyData>> getDailyStudyData(
+    String userId, {
+    int days = 365,
+  }) async {
     try {
       final endDate = DateTime.now();
       final startDate = endDate.subtract(Duration(days: days));
@@ -580,7 +618,10 @@ class UserStatsService {
   }
 
   /// Stream daily study data for heatmap
-  Stream<List<DailyStudyData>> streamDailyStudyData(String userId, {int days = 365}) {
+  Stream<List<DailyStudyData>> streamDailyStudyData(
+    String userId, {
+    int days = 365,
+  }) {
     return _dailyDataCollection(userId).snapshots().map((snapshot) {
       final endDate = DateTime.now();
       final startDate = endDate.subtract(Duration(days: days));
@@ -608,12 +649,14 @@ class UserStatsService {
   }
 
   /// Get weekly performance data (last N weeks)
-  Future<List<WeeklyPerformance>> getWeeklyPerformance(String userId, {int weeks = 12}) async {
+  Future<List<WeeklyPerformance>> getWeeklyPerformance(
+    String userId, {
+    int weeks = 12,
+  }) async {
     try {
-      final snapshot = await _weeklyDataCollection(userId)
-          .orderBy(FieldPath.documentId, descending: true)
-          .limit(weeks)
-          .get();
+      final snapshot = await _weeklyDataCollection(
+        userId,
+      ).orderBy(FieldPath.documentId, descending: true).limit(weeks).get();
 
       final result = <WeeklyPerformance>[];
       for (final doc in snapshot.docs) {
@@ -624,10 +667,12 @@ class UserStatsService {
             int.parse(parts[1]),
             int.parse(parts[2]),
           );
-          result.add(WeeklyPerformance.fromJson(
-            doc.data() as Map<String, dynamic>,
-            date,
-          ));
+          result.add(
+            WeeklyPerformance.fromJson(
+              doc.data() as Map<String, dynamic>,
+              date,
+            ),
+          );
         }
       }
 
@@ -639,28 +684,33 @@ class UserStatsService {
   }
 
   /// Stream weekly performance data
-  Stream<List<WeeklyPerformance>> streamWeeklyPerformance(String userId, {int weeks = 12}) {
+  Stream<List<WeeklyPerformance>> streamWeeklyPerformance(
+    String userId, {
+    int weeks = 12,
+  }) {
     return _weeklyDataCollection(userId)
         .orderBy(FieldPath.documentId, descending: true)
         .limit(weeks)
         .snapshots()
         .map((snapshot) {
-      final result = <WeeklyPerformance>[];
-      for (final doc in snapshot.docs) {
-        final parts = doc.id.split('-');
-        if (parts.length == 3) {
-          final date = DateTime(
-            int.parse(parts[0]),
-            int.parse(parts[1]),
-            int.parse(parts[2]),
-          );
-          result.add(WeeklyPerformance.fromJson(
-            doc.data() as Map<String, dynamic>,
-            date,
-          ));
-        }
-      }
-      return result.reversed.toList();
-    });
+          final result = <WeeklyPerformance>[];
+          for (final doc in snapshot.docs) {
+            final parts = doc.id.split('-');
+            if (parts.length == 3) {
+              final date = DateTime(
+                int.parse(parts[0]),
+                int.parse(parts[1]),
+                int.parse(parts[2]),
+              );
+              result.add(
+                WeeklyPerformance.fromJson(
+                  doc.data() as Map<String, dynamic>,
+                  date,
+                ),
+              );
+            }
+          }
+          return result.reversed.toList();
+        });
   }
 }

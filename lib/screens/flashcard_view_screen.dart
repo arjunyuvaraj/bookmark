@@ -2,6 +2,7 @@ import 'package:bookmark/models/flashcard_model.dart';
 import 'package:bookmark/screens/flashcard_setting_screen.dart';
 import 'package:bookmark/screens/test_screen.dart';
 import 'package:bookmark/services/flashcard_service.dart';
+import 'package:bookmark/services/user_stats_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -114,6 +115,15 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         await FlashcardSetService().incrementSessions(userId, widget.set.id!);
+
+        // Record study session in stats
+        await UserStatsService().recordStudySession(
+          userId: userId,
+          setId: widget.set.id!,
+          setTitle: widget.set.title,
+          cardsStudied: widget.set.cards.length,
+        );
+
         setState(() {
           hasIncrementedSession = true;
         });
@@ -222,7 +232,10 @@ class _FlashcardPracticeScreenState extends State<FlashcardPracticeScreen>
           ),
           title: Text(
             widget.set.title,
-            style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         body: Center(

@@ -56,7 +56,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String displayName, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildHeader(
+    BuildContext context,
+    String displayName,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +95,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDashboard(BuildContext context, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildDashboard(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,9 +338,7 @@ class _CreateNewButtonState extends State<_CreateNewButton> {
           foregroundColor: colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           minimumSize: const Size(0, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -345,7 +352,9 @@ class _CreateNewButtonState extends State<_CreateNewButton> {
             const Text('Create New'),
             const SizedBox(width: 4),
             HugeIcon(
-              icon: _isOpen ? HugeIcons.strokeRoundedArrowUp01 : HugeIcons.strokeRoundedArrowDown01,
+              icon: _isOpen
+                  ? HugeIcons.strokeRoundedArrowUp01
+                  : HugeIcons.strokeRoundedArrowDown01,
               size: 18,
               color: colorScheme.onPrimary,
             ),
@@ -438,10 +447,16 @@ class _DropdownItemState extends State<_DropdownItem> {
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.all(14),
-          color: _isHovered ? widget.colorScheme.onSurface.withAlpha(8) : Colors.transparent,
+          color: _isHovered
+              ? widget.colorScheme.onSurface.withAlpha(8)
+              : Colors.transparent,
           child: Row(
             children: [
-              HugeIcon(icon: widget.icon, size: 20, color: widget.colorScheme.onSurface.withAlpha(153)),
+              HugeIcon(
+                icon: widget.icon,
+                size: 20,
+                color: widget.colorScheme.onSurface.withAlpha(153),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -491,7 +506,9 @@ class _StreakCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = theme.brightness == Brightness.dark;
     final isOnFire = currentStreak >= 3;
-    final fireColor = isOnFire ? Colors.orange : colorScheme.onSurface.withAlpha(102);
+    final fireColor = isOnFire
+        ? Colors.orange
+        : colorScheme.onSurface.withAlpha(102);
 
     return Container(
       height: 100,
@@ -500,7 +517,9 @@ class _StreakCard extends StatelessWidget {
         color: isDark ? colorScheme.surface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isOnFire ? Colors.orange.withAlpha(100) : colorScheme.outline.withAlpha(80),
+          color: isOnFire
+              ? Colors.orange.withAlpha(100)
+              : colorScheme.outline.withAlpha(80),
         ),
       ),
       child: Row(
@@ -509,7 +528,9 @@ class _StreakCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isOnFire ? Colors.orange.withAlpha(30) : colorScheme.onSurface.withAlpha(15),
+              color: isOnFire
+                  ? Colors.orange.withAlpha(30)
+                  : colorScheme.onSurface.withAlpha(15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -596,7 +617,11 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          HugeIcon(icon: icon, size: 24, color: colorScheme.onSurface.withAlpha(102)),
+          HugeIcon(
+            icon: icon,
+            size: 24,
+            color: colorScheme.onSurface.withAlpha(102),
+          ),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,17 +698,20 @@ class _StudyHeatmapCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  ...List.generate(5, (index) => Padding(
-                    padding: const EdgeInsets.only(left: 2),
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: _getHeatmapColor(index, isDark),
-                        borderRadius: BorderRadius.circular(2),
+                  ...List.generate(
+                    5,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: _getHeatmapColor(index, isDark),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  )),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'More',
@@ -698,7 +726,10 @@ class _StudyHeatmapCard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           StreamBuilder<List<DailyStudyData>>(
-            stream: statsService.streamDailyStudyData(userId, days: 140), // ~20 weeks
+            stream: statsService.streamDailyStudyData(
+              userId,
+              days: 140,
+            ), // ~20 weeks
             builder: (context, snapshot) {
               final data = snapshot.data ?? [];
 
@@ -725,23 +756,36 @@ class _StudyHeatmapCard extends StatelessWidget {
   }
 
   Widget _buildHeatmapGrid(List<DailyStudyData> data, bool isDark) {
+    // Handle empty data case
+    if (data.isEmpty) {
+      return SizedBox(
+        height: 100,
+        child: Center(
+          child: Text(
+            'Start studying to see your activity',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withAlpha(102),
+            ),
+          ),
+        ),
+      );
+    }
+
     // Organize data into weeks (7 rows for days of week)
     final weeks = <List<DailyStudyData?>>[];
     var currentWeek = <DailyStudyData?>[];
 
     // Pad the beginning to align with the correct day of week
-    if (data.isNotEmpty) {
-      final firstDayOfWeek = data.first.date.weekday; // 1=Mon, 7=Sun
-      for (int i = 1; i < firstDayOfWeek; i++) {
-        currentWeek.add(null);
-      }
+    final firstDayOfWeek = data.first.date.weekday; // 1=Mon, 7=Sun
+    for (int i = 1; i < firstDayOfWeek; i++) {
+      currentWeek.add(null);
     }
 
     for (final day in data) {
       currentWeek.add(day);
       if (currentWeek.length == 7) {
-        weeks.add(currentWeek);
-        currentWeek = [];
+        weeks.add(List.from(currentWeek));
+        currentWeek.clear();
       }
     }
 
@@ -750,7 +794,22 @@ class _StudyHeatmapCard extends StatelessWidget {
       while (currentWeek.length < 7) {
         currentWeek.add(null);
       }
-      weeks.add(currentWeek);
+      weeks.add(List.from(currentWeek));
+    }
+
+    // If no weeks were created, return empty state
+    if (weeks.isEmpty) {
+      return SizedBox(
+        height: 100,
+        child: Center(
+          child: Text(
+            'Start studying to see your activity',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withAlpha(102),
+            ),
+          ),
+        ),
+      );
     }
 
     final dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
@@ -760,18 +819,22 @@ class _StudyHeatmapCard extends StatelessWidget {
       children: [
         // Day labels
         Column(
-          children: dayLabels.map((label) => SizedBox(
-            height: 14,
-            child: label.isNotEmpty
-                ? Text(
-                    label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 10,
-                      color: colorScheme.onSurface.withAlpha(102),
-                    ),
-                  )
-                : const SizedBox(),
-          )).toList(),
+          children: dayLabels
+              .map(
+                (label) => SizedBox(
+                  height: 14,
+                  child: label.isNotEmpty
+                      ? Text(
+                          label,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 10,
+                            color: colorScheme.onSurface.withAlpha(102),
+                          ),
+                        )
+                      : const SizedBox(),
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(width: 8),
         // Grid
@@ -785,7 +848,9 @@ class _StudyHeatmapCard extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 2),
                   child: Column(
                     children: List.generate(7, (dayIndex) {
-                      final dayData = dayIndex < week.length ? week[dayIndex] : null;
+                      final dayData = dayIndex < week.length
+                          ? week[dayIndex]
+                          : null;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 2),
                         child: Tooltip(
@@ -797,7 +862,10 @@ class _StudyHeatmapCard extends StatelessWidget {
                             height: 12,
                             decoration: BoxDecoration(
                               color: dayData != null
-                                  ? _getHeatmapColor(dayData.activityLevel, isDark)
+                                  ? _getHeatmapColor(
+                                      dayData.activityLevel,
+                                      isDark,
+                                    )
                                   : colorScheme.onSurface.withAlpha(10),
                               borderRadius: BorderRadius.circular(2),
                             ),
@@ -818,27 +886,52 @@ class _StudyHeatmapCard extends StatelessWidget {
   Color _getHeatmapColor(int level, bool isDark) {
     if (isDark) {
       switch (level) {
-        case 0: return Colors.white.withAlpha(15);
-        case 1: return Colors.green.withAlpha(80);
-        case 2: return Colors.green.withAlpha(140);
-        case 3: return Colors.green.withAlpha(200);
-        case 4: return Colors.green;
-        default: return Colors.white.withAlpha(15);
+        case 0:
+          return Colors.white.withAlpha(15);
+        case 1:
+          return Colors.green.withAlpha(80);
+        case 2:
+          return Colors.green.withAlpha(140);
+        case 3:
+          return Colors.green.withAlpha(200);
+        case 4:
+          return Colors.green;
+        default:
+          return Colors.white.withAlpha(15);
       }
     } else {
       switch (level) {
-        case 0: return Colors.black.withAlpha(10);
-        case 1: return Colors.green.withAlpha(60);
-        case 2: return Colors.green.withAlpha(120);
-        case 3: return Colors.green.withAlpha(180);
-        case 4: return Colors.green.withAlpha(230);
-        default: return Colors.black.withAlpha(10);
+        case 0:
+          return Colors.black.withAlpha(10);
+        case 1:
+          return Colors.green.withAlpha(60);
+        case 2:
+          return Colors.green.withAlpha(120);
+        case 3:
+          return Colors.green.withAlpha(180);
+        case 4:
+          return Colors.green.withAlpha(230);
+        default:
+          return Colors.black.withAlpha(10);
       }
     }
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }
@@ -1112,7 +1205,21 @@ class _WeeklyPerformanceCard extends StatelessWidget {
   }
 
   Widget _buildBarChart(List<WeeklyPerformance> data, bool isDark) {
-    final maxCards = data.isEmpty ? 1 : data.map((w) => w.totalCards).reduce((a, b) => a > b ? a : b);
+    // Safety check for empty data
+    if (data.isEmpty) {
+      return Center(
+        child: Text(
+          'No data available',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withAlpha(102),
+          ),
+        ),
+      );
+    }
+
+    final maxCards = data
+        .map((w) => w.totalCards)
+        .reduce((a, b) => a > b ? a : b);
     final normalizedMax = maxCards == 0 ? 1 : maxCards;
 
     return Column(
@@ -1128,7 +1235,8 @@ class _WeeklyPerformanceCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Tooltip(
-                    message: 'Week of ${_formatWeek(week.weekStart)}\n${week.totalCards} cards\n${accuracy.round()}% accuracy',
+                    message:
+                        'Week of ${_formatWeek(week.weekStart)}\n${week.totalCards} cards\n${accuracy.round()}% accuracy',
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -1148,7 +1256,9 @@ class _WeeklyPerformanceCard extends StatelessWidget {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 color: _getBarColor(accuracy, isDark),
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4),
+                                ),
                               ),
                             ),
                           ),
@@ -1189,7 +1299,20 @@ class _WeeklyPerformanceCard extends StatelessWidget {
   }
 
   String _formatWeek(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[date.month - 1]} ${date.day}';
   }
 
@@ -1297,7 +1420,9 @@ class _GoalProgress extends StatelessWidget {
             HugeIcon(
               icon: icon,
               size: 16,
-              color: isComplete ? Colors.green : colorScheme.onSurface.withAlpha(102),
+              color: isComplete
+                  ? Colors.green
+                  : colorScheme.onSurface.withAlpha(102),
             ),
             const SizedBox(width: 8),
             Expanded(
