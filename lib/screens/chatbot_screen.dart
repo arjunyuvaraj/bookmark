@@ -8,8 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bookmark/services/chat_service.dart';
 import 'package:bookmark/services/chat_history_service.dart';
-import 'package:bookmark/services/flashcard_service.dart';
-import 'package:bookmark/models/flashcard_model.dart';
+import 'package:bookmark/services/notes_service.dart';
+import 'package:bookmark/models/note_model.dart';
 import 'package:bookmark/models/chat_model.dart';
 import 'package:bookmark/theme/color_scheme.dart';
 
@@ -26,7 +26,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
   final ChatHistoryService _chatHistoryService = ChatHistoryService();
-  final FlashcardSetService _flashcardService = FlashcardSetService();
+  final NotesService _notesService = NotesService();
   final List<ChatMessage> _messages = [];
   final List<ChatAttachment> _attachments = [];
   bool _isLoading = false;
@@ -96,7 +96,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       isUser: m.isUser,
       timestamp: m.timestamp,
       attachments: m.attachments.map((a) => ChatAttachmentModel(
-        type: a.type == AttachmentType.studySet ? 'studySet' : 'file',
+        type: a.type == AttachmentType.note ? 'note' : 'file',
         name: a.name,
         content: a.content,
       )).toList(),
@@ -142,7 +142,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         isUser: m.isUser,
         timestamp: m.timestamp,
         attachments: m.attachments.map((a) => ChatAttachment(
-          type: a.type == 'studySet' ? AttachmentType.studySet : AttachmentType.file,
+          type: (a.type == 'note' || a.type == 'studySet') ? AttachmentType.note : AttachmentType.file,
           name: a.name,
           content: a.content,
         )).toList(),
@@ -227,8 +227,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     String fullMessage = text;
     if (_attachments.isNotEmpty) {
       final attachmentContext = _attachments.map((a) {
-        if (a.type == AttachmentType.studySet) {
-          return '\n\n[Study Set: ${a.name}]\n${a.content}';
+        if (a.type == AttachmentType.note) {
+          return '\n\n[Note: ${a.name}]\n${a.content}';
         }
         return '\n\n[File: ${a.name}]';
       }).join('');
@@ -351,31 +351,28 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
           child: _AttachmentDialog(
             isDark: isDark,
-            onStudySetSelected: (set) {
+            onNoteSelected: (note) {
               Navigator.pop(context);
-              _addStudySetAttachment(set);
+              _addNoteAttachment(note);
             },
-            flashcardService: _flashcardService,
+            notesService: _notesService,
           ),
         ),
       ),
     );
   }
 
-  void _addStudySetAttachment(SetModel set) {
+  void _addNoteAttachment(NoteModel note) {
     final jsonContent = jsonEncode({
-      'title': set.title,
-      'description': set.description,
-      'cards': set.cards.map((c) => {
-        'question': c.question,
-        'answer': c.answer,
-      }).toList(),
+      'title': note.title,
+      'subject': note.subject,
+      'notes': note.notes,
     });
 
     setState(() {
       _attachments.add(ChatAttachment(
-        type: AttachmentType.studySet,
-        name: set.title,
+        type: AttachmentType.note,
+        name: note.title,
         content: jsonContent,
       ));
     });
@@ -641,18 +638,21 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
-        child: ListView.builder(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          itemCount: _messages.length,
-          itemBuilder: (context, index) {
-            final message = _messages[index];
-            if (message.isUser) {
-              return _buildUserMessage(message, isDark);
-            } else {
-              return _buildAIMessage(message, isDark);
-            }
-          },
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              final message = _messages[index];
+              if (message.isUser) {
+                return _buildUserMessage(message, isDark);
+              } else {
+                return _buildAIMessage(message, isDark);
+              }
+            },
+          ),
         ),
       ),
     );
@@ -684,8 +684,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       HugeIcon(
-                        icon: a.type == AttachmentType.studySet
-                            ? HugeIcons.strokeRoundedCards01
+                        icon: a.type == AttachmentType.note
+                            ? HugeIcons.strokeRoundedNote
                             : HugeIcons.strokeRoundedAttachment01,
                         size: 14,
                         color: subtitleColor,
@@ -1245,13 +1245,13 @@ class _LatexPart {
 // Attachment dialog
 class _AttachmentDialog extends StatelessWidget {
   final bool isDark;
-  final Function(SetModel) onStudySetSelected;
-  final FlashcardSetService flashcardService;
+  final Function(NoteModel) onNoteSelected;
+  final NotesService notesService;
 
   const _AttachmentDialog({
     required this.isDark,
-    required this.onStudySetSelected,
-    required this.flashcardService,
+    required this.onNoteSelected,
+    required this.notesService,
   });
 
   @override
@@ -1290,7 +1290,7 @@ class _AttachmentDialog extends StatelessWidget {
           Divider(height: 1, color: borderColor),
           const SizedBox(height: 16),
           Text(
-            'STUDY SETS',
+            'NOTES',
             style: TextStyle(
               color: subtitleColor,
               fontSize: 11,
@@ -1304,15 +1304,15 @@ class _AttachmentDialog extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
-                  'Sign in to access your study sets',
+                  'Sign in to access your notes',
                   style: TextStyle(color: subtitleColor),
                 ),
               ),
             )
           else
             Expanded(
-              child: FutureBuilder<List<SetModel>>(
-                future: flashcardService.getUserSets(userId),
+              child: FutureBuilder<List<NoteModel>>(
+                future: notesService.getUserNotes(userId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
@@ -1323,24 +1323,24 @@ class _AttachmentDialog extends StatelessWidget {
                     );
                   }
 
-                  final sets = snapshot.data ?? [];
-                  if (sets.isEmpty) {
+                  final notes = snapshot.data ?? [];
+                  if (notes.isEmpty) {
                     return Center(
                       child: Text(
-                        'No study sets yet',
+                        'No notes yet',
                         style: TextStyle(color: subtitleColor),
                       ),
                     );
                   }
 
                   return ListView.builder(
-                    itemCount: sets.length,
+                    itemCount: notes.length,
                     itemBuilder: (context, index) {
-                      final set = sets[index];
-                      return _StudySetTile(
-                        set: set,
+                      final note = notes[index];
+                      return _NoteTile(
+                        note: note,
                         isDark: isDark,
-                        onTap: () => onStudySetSelected(set),
+                        onTap: () => onNoteSelected(note),
                       );
                     },
                   );
@@ -1353,13 +1353,13 @@ class _AttachmentDialog extends StatelessWidget {
   }
 }
 
-class _StudySetTile extends StatelessWidget {
-  final SetModel set;
+class _NoteTile extends StatelessWidget {
+  final NoteModel note;
   final bool isDark;
   final VoidCallback onTap;
 
-  const _StudySetTile({
-    required this.set,
+  const _NoteTile({
+    required this.note,
     required this.isDark,
     required this.onTap,
   });
@@ -1385,7 +1385,7 @@ class _StudySetTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: HugeIcon(
-                icon: HugeIcons.strokeRoundedCards01,
+                icon: HugeIcons.strokeRoundedNote,
                 size: 18,
                 color: subtitleColor,
               ),
@@ -1396,7 +1396,7 @@ class _StudySetTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    set.title,
+                    note.title,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 14,
@@ -1406,7 +1406,7 @@ class _StudySetTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${set.cards.length} cards',
+                    note.subject,
                     style: TextStyle(
                       color: subtitleColor,
                       fontSize: 12,
@@ -1456,8 +1456,8 @@ class _AttachmentChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           HugeIcon(
-            icon: attachment.type == AttachmentType.studySet
-                ? HugeIcons.strokeRoundedCards01
+            icon: attachment.type == AttachmentType.note
+                ? HugeIcons.strokeRoundedNote
                 : HugeIcons.strokeRoundedAttachment01,
             size: 14,
             color: subtitleColor,
@@ -1578,7 +1578,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 }
 
-enum AttachmentType { studySet, file }
+enum AttachmentType { note, file }
 
 class ChatAttachment {
   final AttachmentType type;

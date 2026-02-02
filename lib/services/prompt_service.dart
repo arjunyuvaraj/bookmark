@@ -3,7 +3,7 @@ import 'package:firebase_ai/firebase_ai.dart';
 
 /// Prompt for generating notes from content
 const String _notesPrompt = '''
-You are an expert note-taker creating comprehensive, engaging study notes.
+You are an expert note-taker creating comprehensive, well-organized study notes.
 
 TASK: Create detailed study notes from the provided content in an organized, learnable format.
 
@@ -11,19 +11,48 @@ OUTPUT: Return ONLY a valid JSON object (no markdown fences):
 
 {"title": "Topic title", "subject": "Subject area", "notes": "Markdown notes content"}
 
-NOTES FORMAT:
-- Use ## for sections, ### for subsections
-- Use **bold** for key terms, - for bullets
-- Use emojis: 📌 definitions, 💡 insights, ⚠️ warnings, ✨ facts, 📝 examples, 🧮 formulas
+FORMATTING SYNTAX:
+- Headings: ## for main sections, ### for subsections
+- Text: **bold** for key terms and definitions, *italic* for emphasis
+- Lists: - for unordered bullets, 1. 2. 3. for numbered lists
+- Blockquotes: > for important notes or callouts
+- Horizontal rules: --- to separate major sections
+- Do NOT use emojis anywhere in the notes
 
-MATH (use LaTeX):
-- Inline: \$x^2 + y = z\$
-- Block: \$\$\\frac{a}{b}\$\$
-- Use \\frac, \\sqrt, \\sum, \\int, ^{}, _{} for math notation
+MATHEMATICS (LaTeX):
+Use LaTeX for all mathematical expressions. The app renders LaTeX using flutter_math_fork.
 
-CODE: Use fenced blocks with language (```python)
+Inline math (within text): \$expression\$
+  Examples: \$x^2 + y = z\$, \$E = mc^2\$, \$\\alpha + \\beta\$
 
-QUALITY: Cover all concepts, 500-2000 words, clear organization.
+Block math (centered, standalone): \$\$expression\$\$
+  Examples:
+  \$\$\\frac{a}{b}\$\$
+  \$\$\\int_0^\\infty e^{-x} dx\$\$
+  \$\$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\$\$
+
+Common LaTeX commands:
+- Fractions: \\frac{numerator}{denominator}
+- Square roots: \\sqrt{x}, \\sqrt[n]{x}
+- Exponents: x^2, x^{10}, e^{-x}
+- Subscripts: x_1, x_{ij}
+- Greek letters: \\alpha, \\beta, \\gamma, \\theta, \\pi, \\sigma
+- Operators: \\sum, \\prod, \\int, \\lim
+- Relations: \\leq, \\geq, \\neq, \\approx
+- Arrows: \\rightarrow, \\Rightarrow, \\leftrightarrow
+- Sets: \\in, \\subset, \\cup, \\cap
+
+CODE: Use fenced blocks with language identifier
+  ```python
+  code here
+  ```
+
+STRUCTURE:
+- Start with a brief overview paragraph
+- Use clear section headings for each major topic
+- Include definitions, explanations, and examples
+- Summarize key points at the end when appropriate
+- Target 500-2000 words with thorough coverage
 
 JSON RULES: Escape quotes as \\" and newlines as \\n in the notes string.
 ''';
@@ -40,8 +69,9 @@ RULES:
 - One concept per card
 - Clear questions (what, how, why, compare)
 - Complete, concise answers
-- Use emojis sparingly: 📌 📝 💡 🧮
-- For math, use LaTeX: \$x^2\$ or \$\$\\frac{a}{b}\$\$
+- Do NOT use emojis
+- For math, use LaTeX: \$x^2\$ for inline, \$\$\\frac{a}{b}\$\$ for block
+- Common LaTeX: \\frac{}{}, \\sqrt{}, \\sum, \\int, ^{}, _{}, Greek letters (\\alpha, \\beta, etc.)
 - difficulty: exactly "easy", "medium", or "hard"
 - tags: 2-4 lowercase keywords
 - Generate 15-25 cards covering all major concepts
@@ -61,9 +91,10 @@ RULES:
 - Exactly 4 options per question
 - correctAnswer: 0, 1, 2, or 3 (index of correct option)
 - Plausible distractors (wrong answers)
-- Brief explanation with 💡 or ✅
+- Brief, clear explanation of why the answer is correct
+- Do NOT use emojis
 - difficulty: exactly "easy", "medium", or "hard"
-- For math, use LaTeX: \$x^2\$ or \$\$\\frac{a}{b}\$\$
+- For math, use LaTeX: \$x^2\$ for inline, \$\$\\frac{a}{b}\$\$ for block
 - Generate 10-20 questions covering all topics
 - Escape quotes as \\" in JSON strings
 ''';

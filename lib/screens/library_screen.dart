@@ -17,6 +17,10 @@ import 'package:hugeicons/hugeicons.dart';
 // Enum to filter content type
 enum ContentType { all, notes, flashcards }
 
+// Animation constants for consistent timing
+const Duration _kAnimationDuration = Duration(milliseconds: 200);
+const Curve _kAnimationCurve = Curves.easeOutCubic;
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
 
@@ -29,7 +33,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   SetModel? _selectedSet;
   ContentType _contentFilter = ContentType.all;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
 
   void _selectNote(NoteModel? note) {
     setState(() {
@@ -80,39 +83,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             final notes = notesSnapshot.data ?? [];
             final sets = setsSnapshot.data ?? [];
 
-            // Filter based on search query
-            final filteredNotes = _searchQuery.isEmpty
-                ? notes
-                : notes
-                      .where(
-                        (note) =>
-                            note.title.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ) ||
-                            note.subject.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ),
-                      )
-                      .toList();
-
-            final filteredSets = _searchQuery.isEmpty
-                ? sets
-                : sets
-                      .where(
-                        (set) =>
-                            set.title.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ) ||
-                            set.description.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ),
-                      )
-                      .toList();
-
-            if (filteredNotes.isEmpty && filteredSets.isEmpty) {
-              return _buildEmptyState(context);
-            }
-
             // If a note is selected, show the note detail view
             if (_selectedNote != null) {
               final noteStillExists = notes.any(
@@ -122,13 +92,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _selectNote(null);
                 });
-                return _buildContentList(filteredNotes, filteredSets);
+              } else {
+                return _NoteDetailView(
+                  note: _selectedNote!,
+                  onBack: () => _selectNote(null),
+                  onDeleted: () => _selectNote(null),
+                );
               }
-              return _NoteDetailView(
-                note: _selectedNote!,
-                onBack: () => _selectNote(null),
-                onDeleted: () => _selectNote(null),
-              );
             }
 
             // If a set is selected, show the set settings view
@@ -138,12 +108,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _selectSet(null);
                 });
-                return _buildContentList(filteredNotes, filteredSets);
+              } else {
+                return FlashcardSettingScreen(set: _selectedSet!);
               }
-              return FlashcardSettingScreen(set: _selectedSet!);
             }
 
-            return _buildContentList(filteredNotes, filteredSets);
+            // Use ListenableBuilder to rebuild only when search text changes
+            return ListenableBuilder(
+              listenable: _searchController,
+              builder: (context, child) {
+                final query = _searchController.text.toLowerCase();
+
+                // Filter based on search query
+                final filteredNotes = query.isEmpty
+                    ? notes
+                    : notes.where((note) =>
+                        note.title.toLowerCase().contains(query) ||
+                        note.subject.toLowerCase().contains(query)
+                      ).toList();
+
+                final filteredSets = query.isEmpty
+                    ? sets
+                    : sets.where((set) =>
+                        set.title.toLowerCase().contains(query) ||
+                        set.description.toLowerCase().contains(query)
+                      ).toList();
+
+                return _buildContentList(filteredNotes, filteredSets);
+              },
+            );
           },
         );
       },
@@ -153,223 +146,227 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _buildContentList(List<NoteModel> notes, List<SetModel> sets) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     // Filter content based on selected type
-    final displayNotes = _contentFilter == ContentType.flashcards
-        ? <NoteModel>[]
-        : notes;
-    final displaySets = _contentFilter == ContentType.notes
-        ? <SetModel>[]
-        : sets;
+    final displayNotes =
+        _contentFilter == ContentType.flashcards ? <NoteModel>[] : notes;
+    final displaySets =
+        _contentFilter == ContentType.notes ? <SetModel>[] : sets;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Search bar and filter chips
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Search bar
-              TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search notes and flashcards...',
-                  prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedSearch01),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.outline),
+          // Header with search and filters
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Page title
+                Text(
+                  'Library',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colorScheme.outline.withAlpha(128),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
                 ),
-              ),
-              const SizedBox(height: 12),
-              // Filter chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: Text('All (${notes.length + sets.length})'),
-                      selected: _contentFilter == ContentType.all,
-                      onSelected: (selected) {
-                        setState(() {
-                          _contentFilter = ContentType.all;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      label: Text('Notes (${notes.length})'),
-                      selected: _contentFilter == ContentType.notes,
-                      onSelected: (selected) {
-                        setState(() {
-                          _contentFilter = ContentType.notes;
-                        });
-                      },
-                      avatar: HugeIcon(
-                        icon: HugeIcons.strokeRoundedNote,
-                        size: 18,
-                        color: _contentFilter == ContentType.notes
-                            ? colorScheme.onSecondaryContainer
-                            : colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      label: Text('Flashcards (${sets.length})'),
-                      selected: _contentFilter == ContentType.flashcards,
-                      onSelected: (selected) {
-                        setState(() {
-                          _contentFilter = ContentType.flashcards;
-                        });
-                      },
-                      avatar: HugeIcon(
-                        icon: HugeIcons.strokeRoundedCards01,
-                        size: 18,
-                        color: _contentFilter == ContentType.flashcards
-                            ? colorScheme.onSecondaryContainer
-                            : colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                // Minimal search bar
+                _SearchBar(
+                  controller: _searchController,
+                  theme: theme,
+                  colorScheme: colorScheme,
+                  isDark: isDark,
                 ),
-              ),
-            ],
-          ),
-        ),
-        // Content list
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              // Notes section
-              if (displayNotes.isNotEmpty) ...[
-                if (_contentFilter == ContentType.all)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 4),
-                    child: Row(
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedNote,
-                          size: 20,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Notes',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ...displayNotes.map(
-                  (note) =>
-                      NoteCard(note: note, onTap: () => _selectNote(note)),
-                ),
-                if (displaySets.isNotEmpty) const SizedBox(height: 16),
-              ],
-              // Flashcard sets section
-              if (displaySets.isNotEmpty) ...[
-                if (_contentFilter == ContentType.all)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 4),
-                    child: Row(
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedCards01,
-                          size: 20,
-                          color: Colors.purple,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Flashcard Sets',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.purple,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ...displaySets.map(
-                  (set) => FlashcardSetCard(
-                    set: set,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => FlashcardPracticeScreen(set: set),
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 16),
+                // Minimal filter tabs
+                _FilterTabs(
+                  selectedFilter: _contentFilter,
+                  notesCount: notes.length,
+                  flashcardsCount: sets.length,
+                  onFilterChanged: (filter) {
+                    setState(() => _contentFilter = filter);
+                  },
                 ),
               ],
-            ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Subtle divider
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: isDark ? darkBorder : lightBorder,
+          ),
+          // Content list or empty state
+          Expanded(
+            child: displayNotes.isEmpty && displaySets.isEmpty
+                ? _buildEmptyContent(theme, colorScheme)
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                    itemCount: _getItemCount(displayNotes, displaySets),
+                    itemBuilder: (context, index) {
+                      return _buildListItem(
+                        context,
+                        index,
+                        displayNotes,
+                        displaySets,
+                        theme,
+                        colorScheme,
+                      );
+                    },
+                  ),
+          ),
+        ],
+      );
+  }
+
+  int _getItemCount(List<NoteModel> notes, List<SetModel> sets) {
+    int count = 0;
+    if (notes.isNotEmpty) {
+      count += 1 + notes.length; // Header + items
+    }
+    if (sets.isNotEmpty) {
+      count += 1 + sets.length; // Header + items
+    }
+    return count;
+  }
+
+  Widget _buildListItem(
+    BuildContext context,
+    int index,
+    List<NoteModel> notes,
+    List<SetModel> sets,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    // Calculate which section and item we're in
+    int notesSection = notes.isNotEmpty ? 1 + notes.length : 0;
+
+    if (notes.isNotEmpty && index == 0) {
+      // Notes header
+      return _buildSectionHeader(
+        theme,
+        colorScheme,
+        'Notes',
+        notes.length,
+        HugeIcons.strokeRoundedNote,
+        index,
+      );
+    } else if (notes.isNotEmpty && index > 0 && index <= notes.length) {
+      // Note item
+      final note = notes[index - 1];
+      return NoteCard(
+        key: ValueKey('note_${note.id}'),
+        note: note,
+        onTap: () => _selectNote(note),
+      );
+    } else if (sets.isNotEmpty && index == notesSection) {
+      // Flashcards header
+      return _buildSectionHeader(
+        theme,
+        colorScheme,
+        'Flashcards',
+        sets.length,
+        HugeIcons.strokeRoundedCards01,
+        index,
+      );
+    } else if (sets.isNotEmpty && index > notesSection) {
+      // Flashcard item
+      final set = sets[index - notesSection - 1];
+      return FlashcardSetCard(
+        key: ValueKey('set_${set.id}'),
+        set: set,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FlashcardPracticeScreen(set: set),
           ),
         ),
-      ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSectionHeader(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String title,
+    int count,
+    dynamic icon,
+    int index,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: index == 0 ? 0 : 24,
+        bottom: 12,
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurface.withAlpha(150),
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.onSurface.withAlpha(20),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurface.withAlpha(150),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+  Widget _buildEmptyContent(ThemeData theme, ColorScheme colorScheme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedNote,
-            size: 48,
-            color: colorScheme.onSurface.withAlpha(102),
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: colorScheme.onSurface.withAlpha(15),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedNote,
+                size: 28,
+                color: colorScheme.onSurface.withAlpha(80),
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            _searchQuery.isEmpty ? 'No content yet' : 'No results found',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: colorScheme.onSurface.withAlpha(153),
+            _searchController.text.isEmpty ? 'No content yet' : 'No results found',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface.withAlpha(180),
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            _searchQuery.isEmpty
+            _searchController.text.isEmpty
                 ? 'Upload content to generate study notes'
                 : 'Try a different search term',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withAlpha(102),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withAlpha(100),
             ),
           ),
         ],
@@ -378,13 +375,230 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 }
 
-// ... (NoteCard and FlashcardSetCard remain the same)
+/// Minimal filter tabs inspired by Notion
+class _FilterTabs extends StatelessWidget {
+  final ContentType selectedFilter;
+  final int notesCount;
+  final int flashcardsCount;
+  final ValueChanged<ContentType> onFilterChanged;
 
-class NoteCard extends StatelessWidget {
+  const _FilterTabs({
+    required this.selectedFilter,
+    required this.notesCount,
+    required this.flashcardsCount,
+    required this.onFilterChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      children: [
+        _FilterTab(
+          label: 'All',
+          count: notesCount + flashcardsCount,
+          isSelected: selectedFilter == ContentType.all,
+          onTap: () => onFilterChanged(ContentType.all),
+          theme: theme,
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(width: 4),
+        _FilterTab(
+          label: 'Notes',
+          count: notesCount,
+          isSelected: selectedFilter == ContentType.notes,
+          onTap: () => onFilterChanged(ContentType.notes),
+          theme: theme,
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(width: 4),
+        _FilterTab(
+          label: 'Flashcards',
+          count: flashcardsCount,
+          isSelected: selectedFilter == ContentType.flashcards,
+          onTap: () => onFilterChanged(ContentType.flashcards),
+          theme: theme,
+          colorScheme: colorScheme,
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterTab extends StatefulWidget {
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _FilterTab({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  State<_FilterTab> createState() => _FilterTabState();
+}
+
+class _FilterTabState extends State<_FilterTab> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: _kAnimationDuration,
+          curve: _kAnimationCurve,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? widget.colorScheme.onSurface.withAlpha(20)
+                : (_isHovered
+                    ? widget.colorScheme.onSurface.withAlpha(10)
+                    : Colors.transparent),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedDefaultTextStyle(
+                duration: _kAnimationDuration,
+                style: widget.theme.textTheme.labelMedium!.copyWith(
+                  color: widget.isSelected
+                      ? widget.colorScheme.onSurface
+                      : widget.colorScheme.onSurface.withAlpha(150),
+                  fontWeight:
+                      widget.isSelected ? FontWeight.w500 : FontWeight.w400,
+                ),
+                child: Text(widget.label),
+              ),
+              const SizedBox(width: 6),
+              AnimatedContainer(
+                duration: _kAnimationDuration,
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: widget.isSelected
+                      ? widget.colorScheme.onSurface.withAlpha(25)
+                      : widget.colorScheme.onSurface.withAlpha(12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${widget.count}',
+                  style: widget.theme.textTheme.labelSmall?.copyWith(
+                    color: widget.isSelected
+                        ? widget.colorScheme.onSurface.withAlpha(200)
+                        : widget.colorScheme.onSurface.withAlpha(120),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Minimal search bar that uses controller directly
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+  final bool isDark;
+
+  const _SearchBar({
+    required this.controller,
+    required this.theme,
+    required this.colorScheme,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? darkSurface : lightSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? darkBorder : lightBorder,
+          width: 1,
+        ),
+      ),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, value, child) {
+          return TextField(
+            controller: controller,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search...',
+              hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withAlpha(100),
+              ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 12, right: 8),
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedSearch01,
+                  size: 18,
+                  color: colorScheme.onSurface.withAlpha(120),
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 38,
+                minHeight: 38,
+              ),
+              suffixIcon: value.text.isNotEmpty
+                  ? IconButton(
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedCancel01,
+                        size: 16,
+                        color: colorScheme.onSurface.withAlpha(120),
+                      ),
+                      onPressed: controller.clear,
+                      splashRadius: 16,
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 0,
+                vertical: 12,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class NoteCard extends StatefulWidget {
   final NoteModel note;
   final VoidCallback onTap;
 
   const NoteCard({super.key, required this.note, required this.onTap});
+
+  @override
+  State<NoteCard> createState() => _NoteCardState();
+}
+
+class _NoteCardState extends State<NoteCard> {
+  bool _isHovered = false;
 
   dynamic _getSourceIcon(SourceType type) {
     switch (type) {
@@ -420,85 +634,104 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Note indicator icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withAlpha(26),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedNote,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: _kAnimationDuration,
+            curve: _kAnimationCurve,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? (isDark
+                      ? colorScheme.onSurface.withAlpha(15)
+                      : colorScheme.onSurface.withAlpha(8))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                // Minimal icon
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedNote,
+                  size: 18,
+                  color: colorScheme.onSurface.withAlpha(150),
+                ),
+                const SizedBox(width: 12),
+                // Title and metadata
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.note.title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            HugeIcon(
-                              icon: _getSourceIcon(note.sourceType),
-                              size: 14,
-                              color: colorScheme.onSurface.withAlpha(153),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatDate(note.createdAt),
-                              style: TextStyle(
-                                color: colorScheme.onSurface.withAlpha(153),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withAlpha(26),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      note.subject,
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          HugeIcon(
+                            icon: _getSourceIcon(widget.note.sourceType),
+                            size: 12,
+                            color: colorScheme.onSurface.withAlpha(100),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(widget.note.createdAt),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurface.withAlpha(100),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Subject tag
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    widget.note.subject,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                // Hover arrow indicator
+                AnimatedOpacity(
+                  duration: _kAnimationDuration,
+                  opacity: _isHovered ? 1.0 : 0.0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowRight01,
+                      size: 16,
+                      color: colorScheme.onSurface.withAlpha(100),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -506,11 +739,18 @@ class NoteCard extends StatelessWidget {
   }
 }
 
-class FlashcardSetCard extends StatelessWidget {
+class FlashcardSetCard extends StatefulWidget {
   final SetModel set;
   final VoidCallback onTap;
 
   const FlashcardSetCard({super.key, required this.set, required this.onTap});
+
+  @override
+  State<FlashcardSetCard> createState() => _FlashcardSetCardState();
+}
+
+class _FlashcardSetCardState extends State<FlashcardSetCard> {
+  bool _isHovered = false;
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
@@ -531,69 +771,105 @@ class FlashcardSetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Flashcard indicator icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withAlpha(26),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedCards01,
-                      size: 20,
-                      color: Colors.purple,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          set.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: _kAnimationDuration,
+            curve: _kAnimationCurve,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? (isDark
+                      ? colorScheme.onSurface.withAlpha(15)
+                      : colorScheme.onSurface.withAlpha(8))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                // Minimal icon
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedCards01,
+                  size: 18,
+                  color: colorScheme.onSurface.withAlpha(150),
+                ),
+                const SizedBox(width: 12),
+                // Title and metadata
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.set.title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${set.cards.length} cards • ${_formatDate(set.dateAdded)}',
-                          style: TextStyle(
-                            color: colorScheme.onSurface.withAlpha(153),
-                            fontSize: 13,
-                          ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.set.cards.length} cards · ${_formatDate(widget.set.dateAdded)}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withAlpha(100),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Card count badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withAlpha(15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedCards01,
+                        size: 12,
+                        color: colorScheme.onSurface.withAlpha(120),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${widget.set.cards.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withAlpha(150),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Hover arrow indicator
+                AnimatedOpacity(
+                  duration: _kAnimationDuration,
+                  opacity: _isHovered ? 1.0 : 0.0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowRight01,
+                      size: 16,
+                      color: colorScheme.onSurface.withAlpha(100),
                     ),
                   ),
-                ],
-              ),
-              if (set.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  set.description,
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withAlpha(180),
-                    fontSize: 13,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -950,133 +1226,100 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
     return Container(
       color: bgColor,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with back button and actions
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-            ),
+          // Minimal header with back button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                IconButton(
-                  icon: HugeIcon(
-                    icon: HugeIcons.strokeRoundedArrowLeft01,
-                    color: textColor,
-                    size: 24,
-                  ),
-                  onPressed: widget.onBack,
+                // Back button
+                _HoverIconButton(
+                  icon: HugeIcons.strokeRoundedArrowLeft01,
+                  onTap: widget.onBack,
                   tooltip: 'Back to library',
+                  colorScheme: colorScheme,
+                  isDark: isDark,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.note.title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                const Spacer(),
+                // Action buttons row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ActionButton(
+                      icon: HugeIcons.strokeRoundedCards01,
+                      label: 'Flashcards',
+                      isLoading:
+                          _isGenerating && _generatingType == 'flashcards',
+                      onTap: _generateFlashcards,
+                      colorScheme: colorScheme,
+                      isDark: isDark,
+                      theme: theme,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: HugeIcons.strokeRoundedQuiz02,
+                      label: 'Quiz',
+                      isLoading: _isGenerating && _generatingType == 'quiz',
+                      onTap: _generateQuiz,
+                      colorScheme: colorScheme,
+                      isDark: isDark,
+                      theme: theme,
+                    ),
+                    const SizedBox(width: 8),
+                    _HoverIconButton(
+                      icon: HugeIcons.strokeRoundedDelete02,
+                      onTap: _deleteNote,
+                      tooltip: 'Delete note',
+                      colorScheme: colorScheme,
+                      isDark: isDark,
+                      isDestructive: true,
+                    ),
+                  ],
                 ),
-                // Three-dot menu with all actions
-                PopupMenuButton<String>(
-                  icon: HugeIcon(
-                    icon: HugeIcons.strokeRoundedMoreVertical,
+              ],
+            ),
+          ),
+          // Title and metadata section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  widget.note.title,
+                  style: theme.textTheme.headlineMedium?.copyWith(
                     color: textColor,
-                    size: 24,
+                    fontWeight: FontWeight.w600,
                   ),
-                  enabled: !_isGenerating,
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'flashcards':
-                        _generateFlashcards();
-                        break;
-                      case 'quiz':
-                        _generateQuiz();
-                        break;
-                      case 'delete':
-                        _deleteNote();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'flashcards',
-                      child: Row(
-                        children: [
-                          if (_isGenerating && _generatingType == 'flashcards')
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colorScheme.primary,
-                              ),
-                            )
-                          else
-                            HugeIcon(
-                              icon: HugeIcons.strokeRoundedCards01,
-                              color: colorScheme.primary,
-                              size: 20,
-                            ),
-                          const SizedBox(width: 12),
-                          Text(
-                            _isGenerating && _generatingType == 'flashcards'
-                                ? 'Generating...'
-                                : 'Generate Flashcards',
-                            style: TextStyle(color: colorScheme.primary),
-                          ),
-                        ],
+                ),
+                const SizedBox(height: 12),
+                // Metadata row
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        widget.note.subject,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    PopupMenuItem(
-                      value: 'quiz',
-                      child: Row(
-                        children: [
-                          if (_isGenerating && _generatingType == 'quiz')
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colorScheme.primary,
-                              ),
-                            )
-                          else
-                            HugeIcon(
-                              icon: HugeIcons.strokeRoundedQuiz02,
-                              color: colorScheme.primary,
-                              size: 20,
-                            ),
-                          const SizedBox(width: 12),
-                          Text(
-                            _isGenerating && _generatingType == 'quiz'
-                                ? 'Generating...'
-                                : 'Practice Quiz',
-                            style: TextStyle(color: colorScheme.primary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedDelete02,
-                            color: Colors.red,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ],
+                    const SizedBox(width: 12),
+                    Text(
+                      _formatDate(widget.note.createdAt),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: subtitleColor,
                       ),
                     ),
                   ],
@@ -1084,50 +1327,17 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
               ],
             ),
           ),
-          // Subject badge and date
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withAlpha(26),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    widget.note.subject,
-                    style: TextStyle(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _formatDate(widget.note.createdAt),
-                  style: TextStyle(color: subtitleColor, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
+          // Divider
+          Divider(height: 1, thickness: 1, color: borderColor),
           // Notes content
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
+                  constraints: const BoxConstraints(maxWidth: 720),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: _NotesMarkdownContent(
                       text: widget.note.notes,
                       isDark: isDark,
@@ -1139,6 +1349,145 @@ class _NoteDetailViewState extends State<_NoteDetailView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Minimal hover icon button
+class _HoverIconButton extends StatefulWidget {
+  final dynamic icon;
+  final VoidCallback onTap;
+  final String tooltip;
+  final ColorScheme colorScheme;
+  final bool isDark;
+  final bool isDestructive;
+
+  const _HoverIconButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+    required this.colorScheme,
+    required this.isDark,
+    this.isDestructive = false,
+  });
+
+  @override
+  State<_HoverIconButton> createState() => _HoverIconButtonState();
+}
+
+class _HoverIconButtonState extends State<_HoverIconButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hoverColor = widget.isDestructive
+        ? Colors.red.withAlpha(20)
+        : widget.colorScheme.onSurface.withAlpha(15);
+    final iconColor = widget.isDestructive
+        ? (_isHovered ? Colors.red : widget.colorScheme.onSurface.withAlpha(150))
+        : widget.colorScheme.onSurface.withAlpha(_isHovered ? 200 : 150);
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: _kAnimationDuration,
+            curve: _kAnimationCurve,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _isHovered ? hoverColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: HugeIcon(
+              icon: widget.icon,
+              size: 18,
+              color: iconColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Minimal action button with label
+class _ActionButton extends StatefulWidget {
+  final dynamic icon;
+  final String label;
+  final bool isLoading;
+  final VoidCallback onTap;
+  final ColorScheme colorScheme;
+  final bool isDark;
+  final ThemeData theme;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.isLoading,
+    required this.onTap,
+    required this.colorScheme,
+    required this.isDark,
+    required this.theme,
+  });
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.isLoading ? null : widget.onTap,
+        child: AnimatedContainer(
+          duration: _kAnimationDuration,
+          curve: _kAnimationCurve,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? widget.colorScheme.onSurface.withAlpha(15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isLoading)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: widget.colorScheme.onSurface.withAlpha(150),
+                  ),
+                )
+              else
+                HugeIcon(
+                  icon: widget.icon,
+                  size: 14,
+                  color: widget.colorScheme.onSurface.withAlpha(150),
+                ),
+              const SizedBox(width: 6),
+              Text(
+                widget.isLoading ? 'Generating...' : widget.label,
+                style: widget.theme.textTheme.labelSmall?.copyWith(
+                  color: widget.colorScheme.onSurface.withAlpha(180),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
