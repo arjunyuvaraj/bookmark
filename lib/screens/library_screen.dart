@@ -1575,189 +1575,227 @@ class _QuizScreenState extends State<_QuizScreen> {
 
     final question = widget.questions[_currentIndex];
 
+    final borderColor = isDark ? darkBorder : lightBorder;
+    final surfaceColor = isDark ? darkSurface : lightSurface;
+
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: textColor,
-            size: 24,
-          ),
-          onPressed: () {
-            // Return null when backing out without completing
-            Navigator.pop(context, null);
-          },
-        ),
-        title: Text(
-          'Question ${_currentIndex + 1}/${widget.questions.length}',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Progress bar
-            LinearProgressIndicator(
-              value: (_currentIndex + 1) / widget.questions.length,
-              backgroundColor: colorScheme.onSurface.withAlpha(20),
-              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-              minHeight: 4,
-              borderRadius: BorderRadius.circular(2),
-            ),
-            const SizedBox(height: 24),
-            // Question
-            Text(
-              question.question,
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.w600,
+            // Minimal header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _HoverIconButton(
+                    icon: HugeIcons.strokeRoundedArrowLeft01,
+                    onTap: () => Navigator.pop(context, null),
+                    tooltip: 'Exit quiz',
+                    colorScheme: colorScheme,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Question ${_currentIndex + 1} of ${widget.questions.length}',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: (_currentIndex + 1) / widget.questions.length,
+                            backgroundColor: colorScheme.onSurface.withAlpha(20),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colorScheme.primary.withAlpha(180),
+                            ),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
-            // Options
+            Divider(height: 1, color: borderColor),
+            // Question content
             Expanded(
-              child: ListView.builder(
-                itemCount: question.options.length,
-                itemBuilder: (context, index) {
-                  final isSelected = _selectedAnswer == index;
-                  final isCorrect = index == question.correctAnswer;
-                  final showResult = _selectedAnswer != null;
-
-                  Color? bgColor;
-                  Color? borderColor;
-                  if (showResult) {
-                    if (isCorrect) {
-                      bgColor = Colors.green.withAlpha(26);
-                      borderColor = Colors.green;
-                    } else if (isSelected && !isCorrect) {
-                      bgColor = Colors.red.withAlpha(26);
-                      borderColor = Colors.red;
-                    }
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: InkWell(
-                      onTap: () => _selectAnswer(index),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color:
-                              bgColor ?? (isDark ? darkSurface : lightSurface),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color:
-                                borderColor ??
-                                colorScheme.outline.withAlpha(50),
-                            width: borderColor != null ? 2 : 1,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Question
+                        _QuizLatexText(
+                          text: question.question,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
                           ),
+                          isDark: isDark,
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurface.withAlpha(20),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  String.fromCharCode(65 + index),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? colorScheme.onPrimary
-                                        : subtitleColor,
-                                    fontWeight: FontWeight.w600,
+                        const SizedBox(height: 32),
+                        // Options
+                        ...List.generate(question.options.length, (index) {
+                          final isSelected = _selectedAnswer == index;
+                          final isCorrect = index == question.correctAnswer;
+                          final showResult = _selectedAnswer != null;
+
+                          Color optionBgColor = surfaceColor;
+                          Color optionBorderColor = borderColor;
+
+                          if (showResult) {
+                            if (isCorrect) {
+                              optionBgColor = colorScheme.primary.withAlpha(15);
+                              optionBorderColor = colorScheme.primary.withAlpha(100);
+                            } else if (isSelected && !isCorrect) {
+                              optionBgColor = Colors.red.withAlpha(15);
+                              optionBorderColor = Colors.red.withAlpha(100);
+                            }
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: InkWell(
+                              onTap: _selectedAnswer == null ? () => _selectAnswer(index) : null,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: optionBgColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: optionBorderColor,
+                                    width: showResult && isCorrect ? 2 : 1,
                                   ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? (showResult && !isCorrect
+                                                ? Colors.red.withAlpha(150)
+                                                : colorScheme.onSurface.withAlpha(180))
+                                            : colorScheme.onSurface.withAlpha(15),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          String.fromCharCode(65 + index),
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? (isDark ? darkBackground : lightBackground)
+                                                : subtitleColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: _QuizLatexText(
+                                        text: question.options[index],
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: textColor,
+                                        ),
+                                        isDark: isDark,
+                                      ),
+                                    ),
+                                    if (showResult && isCorrect)
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                                        color: colorScheme.primary,
+                                        size: 20,
+                                      ),
+                                    if (showResult && isSelected && !isCorrect)
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCancel01,
+                                        color: Colors.red.withAlpha(180),
+                                        size: 20,
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
+                          );
+                        }),
+                        // Explanation
+                        if (_showExplanation) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.onSurface.withAlpha(10),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                HugeIcon(
+                                  icon: HugeIcons.strokeRoundedIdea,
+                                  color: colorScheme.onSurface.withAlpha(150),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    question.explanation,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: textColor,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _nextQuestion,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.onSurface.withAlpha(isDark ? 200 : 220),
+                                foregroundColor: isDark ? darkBackground : lightBackground,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                               child: Text(
-                                question.options[index],
-                                style: TextStyle(color: textColor),
+                                _currentIndex < widget.questions.length - 1
+                                    ? 'Next Question'
+                                    : 'See Results',
+                                style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                             ),
-                            if (showResult && isCorrect)
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-                                color: Colors.green,
-                                size: 24,
-                              ),
-                            if (showResult && isSelected && !isCorrect)
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedCancel01,
-                                color: Colors.red,
-                                size: 24,
-                              ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        ],
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
-            // Explanation
-            if (_showExplanation) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withAlpha(20),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedIdea,
-                      color: colorScheme.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        question.explanation,
-                        style: TextStyle(color: textColor),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _nextQuestion,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    _currentIndex < widget.questions.length - 1
-                        ? 'Next Question'
-                        : 'See Results',
-                    style: TextStyle(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -1771,115 +1809,136 @@ class _QuizScreenState extends State<_QuizScreen> {
     Color textColor,
     Color subtitleColor,
   ) {
+    final isDark = theme.brightness == Brightness.dark;
+    final borderColor = isDark ? darkBorder : lightBorder;
     final percentage = (_correctCount / widget.questions.length * 100).round();
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: textColor,
-            size: 24,
-          ),
-          onPressed: () {
-            // Return quiz completion data
-            Navigator.pop(context, {
-              'completed': true,
-              'score': _correctCount,
-              'totalQuestions': widget.questions.length,
-            });
-          },
-        ),
-        title: Text(
-          'Quiz Complete',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: percentage >= 70
-                      ? Colors.green.withAlpha(26)
-                      : Colors.orange.withAlpha(26),
-                  borderRadius: BorderRadius.circular(50),
-                ),
-                child: Center(
-                  child: Text(
-                    '$percentage%',
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      color: percentage >= 70 ? Colors.green : Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                percentage >= 70 ? 'Great job!' : 'Keep practicing!',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'You got $_correctCount out of ${widget.questions.length} questions correct',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: subtitleColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              Row(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Minimal header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // Return quiz completion data
-                        Navigator.pop(context, {
-                          'completed': true,
-                          'score': _correctCount,
-                          'totalQuestions': widget.questions.length,
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        side: BorderSide(color: colorScheme.outline),
-                      ),
-                      child: const Text('Done'),
-                    ),
+                  _HoverIconButton(
+                    icon: HugeIcons.strokeRoundedArrowLeft01,
+                    onTap: () {
+                      Navigator.pop(context, {
+                        'completed': true,
+                        'score': _correctCount,
+                        'totalQuestions': widget.questions.length,
+                      });
+                    },
+                    tooltip: 'Back to notes',
+                    colorScheme: colorScheme,
+                    isDark: isDark,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _restartQuiz,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Try Again'),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Quiz Complete',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+            Divider(height: 1, color: borderColor),
+            // Results content
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: colorScheme.onSurface.withAlpha(15),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$percentage%',
+                              style: theme.textTheme.headlineLarge?.copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          percentage >= 70 ? 'Great job!' : 'Keep practicing!',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You got $_correctCount out of ${widget.questions.length} questions correct',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: subtitleColor,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.pop(context, {
+                                    'completed': true,
+                                    'score': _correctCount,
+                                    'totalQuestions': widget.questions.length,
+                                  });
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  side: BorderSide(color: borderColor),
+                                  foregroundColor: textColor,
+                                ),
+                                child: const Text('Done'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _restartQuiz,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: colorScheme.onSurface.withAlpha(isDark ? 200 : 220),
+                                  foregroundColor: isDark ? darkBackground : lightBackground,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text('Try Again'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2193,6 +2252,101 @@ class _SafeLatex extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+/// Simple LaTeX-aware text widget for quiz questions and options
+class _QuizLatexText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  final bool isDark;
+
+  const _QuizLatexText({
+    required this.text,
+    this.style,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = _parseLatex(text);
+
+    if (parts.length == 1 && !parts[0].isLatex) {
+      // No LaTeX, just return regular text
+      return Text(text, style: style);
+    }
+
+    // Build a wrap of text and LaTeX widgets
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: parts.map((part) {
+        if (part.isLatex) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: _SafeLatex(
+              latex: part.content,
+              textStyle: style ?? const TextStyle(),
+              isDark: isDark,
+            ),
+          );
+        } else {
+          return Text(part.content, style: style);
+        }
+      }).toList(),
+    );
+  }
+
+  List<_LatexPart> _parseLatex(String input) {
+    final parts = <_LatexPart>[];
+
+    // Pattern for block LaTeX: $$...$$
+    final blockPattern = RegExp(r'\$\$([\s\S]*?)\$\$');
+    // Pattern for inline LaTeX: $...$
+    final inlinePattern = RegExp(r'(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)');
+
+    // First handle block LaTeX
+    int offset = 0;
+
+    for (final match in blockPattern.allMatches(input)) {
+      if (match.start > offset) {
+        parts.add(_LatexPart(input.substring(offset, match.start), false, false));
+      }
+      parts.add(_LatexPart(match.group(1)?.trim() ?? '', true, true));
+      offset = match.end;
+    }
+
+    if (offset < input.length) {
+      parts.add(_LatexPart(input.substring(offset), false, false));
+    }
+
+    if (parts.isEmpty) {
+      parts.add(_LatexPart(input, false, false));
+    }
+
+    // Now process inline LaTeX in non-LaTeX parts
+    final finalParts = <_LatexPart>[];
+    for (final part in parts) {
+      if (part.isLatex) {
+        finalParts.add(part);
+      } else {
+        int lastEnd = 0;
+        for (final match in inlinePattern.allMatches(part.content)) {
+          if (match.start > lastEnd) {
+            finalParts.add(_LatexPart(part.content.substring(lastEnd, match.start), false, false));
+          }
+          final content = match.group(1) ?? '';
+          if (content.isNotEmpty) {
+            finalParts.add(_LatexPart(content.trim(), true, false));
+          }
+          lastEnd = match.end;
+        }
+        if (lastEnd < part.content.length) {
+          finalParts.add(_LatexPart(part.content.substring(lastEnd), false, false));
+        }
+      }
+    }
+
+    return finalParts.isEmpty ? [_LatexPart(input, false, false)] : finalParts;
   }
 }
 

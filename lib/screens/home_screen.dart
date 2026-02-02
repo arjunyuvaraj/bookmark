@@ -492,9 +492,10 @@ class _StreakCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final hasStreak = currentStreak > 0;
 
-    // Muted flame color - slightly warmer when active
+    // Subtle amber/orange for active streak
+    const streakColor = Color(0xFFE8A838);
     final flameColor = hasStreak
-        ? colorScheme.onSurface.withAlpha(180)
+        ? streakColor
         : colorScheme.onSurface.withAlpha(80);
 
     return Container(
@@ -512,7 +513,9 @@ class _StreakCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: colorScheme.onSurface.withAlpha(15),
+              color: hasStreak
+                  ? streakColor.withAlpha(20)
+                  : colorScheme.onSurface.withAlpha(15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -538,6 +541,7 @@ class _StreakCard extends StatelessWidget {
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.5,
+                        color: hasStreak ? streakColor : null,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -903,6 +907,12 @@ class _GoalProgress extends StatelessWidget {
     final progress = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
     final isComplete = current >= target;
 
+    // Subtle green for completed, primary blue for in-progress
+    const completedColor = Color(0xFF4CAF50);
+    final progressColor = isComplete
+        ? completedColor
+        : colorScheme.primary.withAlpha(180);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -911,7 +921,9 @@ class _GoalProgress extends StatelessWidget {
             HugeIcon(
               icon: icon,
               size: 18,
-              color: colorScheme.onSurface.withAlpha(isComplete ? 180 : 120),
+              color: isComplete
+                  ? completedColor
+                  : colorScheme.onSurface.withAlpha(120),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -926,6 +938,7 @@ class _GoalProgress extends StatelessWidget {
               '$current / $target',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: isComplete ? completedColor : null,
               ),
             ),
             if (isComplete) ...[
@@ -933,7 +946,7 @@ class _GoalProgress extends StatelessWidget {
               HugeIcon(
                 icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                 size: 14,
-                color: colorScheme.onSurface.withAlpha(180),
+                color: completedColor,
               ),
             ],
           ],
@@ -944,9 +957,7 @@ class _GoalProgress extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             backgroundColor: colorScheme.onSurface.withAlpha(20),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              colorScheme.onSurface.withAlpha(isComplete ? 180 : 100),
-            ),
+            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
             minHeight: 8,
           ),
         ),
